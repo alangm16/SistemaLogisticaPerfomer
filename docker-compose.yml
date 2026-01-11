@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: performer-mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: secret
+      MYSQL_DATABASE: performer_logistics
+      MYSQL_USER: performer
+      MYSQL_PASSWORD: performer123
+    ports:
+      - "3307:3306"
+    volumes:
+      - ./mysql_data:/var/lib/mysql
+      - ./docs/db-schema.sql:/docker-entrypoint-initdb.d/db-schema.sql
+    networks:
+      - performer_net
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: performer-phpmyadmin
+    restart: always
+    environment:
+      PMA_HOST: mysql
+      PMA_USER: root
+      PMA_PASSWORD: secret
+    ports:
+      - "8081:80"
+    networks:
+      - performer_net
+
+networks:
+  performer_net:
+    driver: bridge

@@ -6,26 +6,44 @@ export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
+    setLoading(true);
 
     try {
       const response = await api.post('/auth/login', { email, password });
       const { token, rol, nombre } = response.data;
 
-      // Guardar token en localStorage
+      // Guardar token y datos en localStorage
       localStorage.setItem('token', token);
       localStorage.setItem('rol', rol);
       localStorage.setItem('nombre', nombre);
 
-      // Redirigir al dashboard
-      navigate('/dashboard');
+      // Redirigir según rol
+      if (rol === 'ADMIN') {
+        navigate('/admin/usuarios');
+      } else if (rol === 'VENDEDOR') {
+        navigate('/clientes');
+      } else if (rol === 'PRICING') {
+        navigate('/proveedores');
+      } else {
+        navigate('/dashboard');
+      }
     } catch (err) {
-        console.error("Error en login:", err);
-        setError('Credenciales inválidas o error de conexión');
+      console.error("Error en login:", err);
+      if (err.response?.status === 403) {
+        setError('Tu cuenta está pendiente de aprobación o inactiva');
+      } else if (err.response?.status === 401) {
+        setError('Credenciales inválidas');
+      } else {
+        setError('Error de conexión con el servidor');
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -51,7 +69,9 @@ export default function Login() {
             required 
           />
         </div>
-        <button type="submit">Entrar</button>
+        <button type="submit" disabled={loading}>
+          {loading ? 'Entrando...' : 'Entrar'}
+        </button>
       </form>
       {error && <p style={{color: 'red'}}>{error}</p>}
     </div>

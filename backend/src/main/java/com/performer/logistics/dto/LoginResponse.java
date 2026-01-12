@@ -10,11 +10,11 @@ public class LoginResponse {
     private String rol;
     private String nombre;
 
-    public LoginResponse(String token, String rol, String nombre) {
+    /*public LoginResponse(String token, String rol, String nombre) {
         this.token = token;
         this.rol = rol;
         this.nombre = nombre;
-    }
+    }*/
 
     public String getToken() {
         return token;

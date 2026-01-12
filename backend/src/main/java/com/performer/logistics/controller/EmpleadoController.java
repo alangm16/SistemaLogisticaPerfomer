@@ -1,7 +1,9 @@
+// com.performer.logistics.controller.EmpleadoController.java
 package com.performer.logistics.controller;
 
 import com.performer.logistics.domain.Empleado;
 import com.performer.logistics.service.EmpleadoService;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -9,38 +11,49 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/empleados")
 public class EmpleadoController {
+    private final EmpleadoService service;
 
-    private final EmpleadoService empleadoService;
-
-    public EmpleadoController(EmpleadoService empleadoService) {
-        this.empleadoService = empleadoService;
+    public EmpleadoController(EmpleadoService service) {
+        this.service = service;
     }
 
     @GetMapping
-    public List<Empleado> listar() {
-        return empleadoService.listarTodos();
-    }
+    @PreAuthorize("hasRole('ADMIN')")
+    public List<Empleado> listar() { return service.listar(); }
 
     @GetMapping("/{id}")
-    public Empleado obtenerPorId(@PathVariable Long id) {
-        return empleadoService.buscarPorId(id)
-                .orElseThrow(() -> new RuntimeException("Empleado no encontrado con id " + id));
-    }
+    @PreAuthorize("hasRole('ADMIN')")
+    public Empleado obtener(@PathVariable Long id) { return service.obtener(id); }
 
     @PostMapping
-    public Empleado crear(@RequestBody Empleado empleado) {
-        return empleadoService.guardar(empleado);
-    }
+    @PreAuthorize("hasRole('ADMIN')")
+    public Empleado crear(@RequestBody Empleado e) { return service.crear(e); }
 
     @PutMapping("/{id}")
-    public Empleado actualizar(@PathVariable Long id, @RequestBody Empleado empleado) {
-        return empleadoService.actualizar(id, empleado);
+    @PreAuthorize("hasRole('ADMIN')")
+    public Empleado actualizar(@PathVariable Long id, @RequestBody Empleado e) {
+        return service.actualizar(id, e);
     }
 
     @DeleteMapping("/{id}")
-    public void eliminar(@PathVariable Long id) {
-        empleadoService.eliminar(id);
+    @PreAuthorize("hasRole('ADMIN')")
+    public void eliminar(@PathVariable Long id) { service.eliminar(id); }
+
+    @PostMapping("/{id}/aprobar")
+    @PreAuthorize("hasRole('ADMIN')")
+    public Empleado aprobar(@PathVariable Long id) { return service.aprobar(id); }
+
+    @PostMapping("/{id}/rechazar")
+    @PreAuthorize("hasRole('ADMIN')")
+    public Empleado rechazar(@PathVariable Long id) { return service.rechazar(id); }
+
+    @PostMapping("/{id}/rol")
+    @PreAuthorize("hasRole('ADMIN')")
+    public Empleado cambiarRol(@PathVariable Long id, @RequestParam Empleado.Rol rol) {
+        return service.cambiarRol(id, rol);
     }
+    
 }
+
 
 

@@ -10,17 +10,35 @@ import EditarCliente from './pages/EditarCliente';
 import Proveedores from './pages/Proveedores'; 
 import NuevoProveedor from './pages/NuevoProveedor'; 
 import EditarProveedor from './pages/EditarProveedor';
+import AdminUsuarios from './pages/AdminUsuarios';
+import Unauthorized from './pages/Unauthorized';
+import Logout from './pages/Logout';
 
-function PrivateRoute({ children }) {
+// PrivateRoute extendido con validación de rol
+function PrivateRoute({ children, roles }) {
   const token = localStorage.getItem('token');
-  return token ? children : <Navigate to="/login" />;
+  const rol = localStorage.getItem('rol');
+
+  if (!token) {
+    return <Navigate to="/login" />;
+  }
+
+  if (roles && !roles.includes(rol)) {
+    return <Navigate to="/unauthorized" />;
+  }
+
+  return children;
 }
 
 function App() {
   return (
     <Router>
       <Routes>
+        {/* Login */}
         <Route path="/login" element={<Login />} />
+        <Route path="/logout" element={<Logout />} />
+
+        {/* Dashboard accesible para cualquier usuario autenticado */}
         <Route 
           path="/dashboard" 
           element={
@@ -29,39 +47,69 @@ function App() {
             </PrivateRoute>
           } 
         />
-        <Route path="/empleados" element={ <PrivateRoute>
-              <Empleados />
-            </PrivateRoute>
-          } 
-        />
-        <Route path="/empleados/nuevo" element={ <PrivateRoute>
-              <NuevoEmpleado />
-            </PrivateRoute>
-          } 
-        />
-        <Route path="/empleados/:id/editar" element={ <PrivateRoute>
-              <EditarEmpleado />
-            </PrivateRoute>
-          } 
-        />
-        <Route path="/clientes" element={<PrivateRoute>
-          <Clientes />
-        </PrivateRoute>} /> 
-        <Route path="/clientes/nuevo" element={<PrivateRoute>
+
+        {/* CRUD de Empleados (solo ADMIN) */}
+        <Route path="/empleados" element={
+          <PrivateRoute roles={['ADMIN']}>
+            <Empleados />
+          </PrivateRoute>
+        } />
+        <Route path="/empleados/nuevo" element={
+          <PrivateRoute roles={['ADMIN']}>
+            <NuevoEmpleado />
+          </PrivateRoute>
+        } />
+        <Route path="/empleados/:id/editar" element={
+          <PrivateRoute roles={['ADMIN']}>
+            <EditarEmpleado />
+          </PrivateRoute>
+        } />
+
+        {/* CRUD de Clientes (VENDEDOR y ADMIN) */}
+        <Route path="/clientes" element={
+          <PrivateRoute roles={['VENDEDOR','ADMIN']}>
+            <Clientes />
+          </PrivateRoute>
+        } /> 
+        <Route path="/clientes/nuevo" element={
+          <PrivateRoute roles={['VENDEDOR','ADMIN']}>
             <NuevoCliente />
-        </PrivateRoute>} /> 
-        <Route path="/clientes/:id/editar" element={<PrivateRoute>
-              <EditarCliente />
-        </PrivateRoute>} />
-        <Route path="/proveedores" element={<PrivateRoute>
-          <Proveedores />
-        </PrivateRoute>} /> 
-        <Route path="/proveedores/nuevo" element={<PrivateRoute>
-          <NuevoProveedor />
-        </PrivateRoute>} /> 
-        <Route path="/proveedores/:id/editar" element={<PrivateRoute>
-          <EditarProveedor />
-        </PrivateRoute>} />
+          </PrivateRoute>
+        } /> 
+        <Route path="/clientes/:id/editar" element={
+          <PrivateRoute roles={['VENDEDOR','ADMIN']}>
+            <EditarCliente />
+          </PrivateRoute>
+        } />
+
+        {/* CRUD de Proveedores (PRICING y ADMIN) */}
+        <Route path="/proveedores" element={
+          <PrivateRoute roles={['PRICING','ADMIN']}>
+            <Proveedores />
+          </PrivateRoute>
+        } /> 
+        <Route path="/proveedores/nuevo" element={
+          <PrivateRoute roles={['PRICING','ADMIN']}>
+            <NuevoProveedor />
+          </PrivateRoute>
+        } /> 
+        <Route path="/proveedores/:id/editar" element={
+          <PrivateRoute roles={['PRICING','ADMIN']}>
+            <EditarProveedor />
+          </PrivateRoute>
+        } />
+
+        {/* Dashboard de administrador para gestión de usuarios */}
+        <Route path="/admin/usuarios" element={
+          <PrivateRoute roles={['ADMIN']}>
+            <AdminUsuarios />
+          </PrivateRoute>
+        } />
+
+        {/* Página de acceso denegado */}
+        <Route path="/unauthorized" element={<Unauthorized />} />
+
+        {/* Redirección por defecto */}
         <Route path="*" element={<Navigate to="/login" />} />
       </Routes>
     </Router>

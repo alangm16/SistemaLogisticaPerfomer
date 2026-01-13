@@ -2,15 +2,12 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import Dashboard from './pages/Dashboard';
 import Login from './pages/Login';
 import Empleados from './pages/Empleados';
-import NuevoEmpleado from './pages/NuevoEmpleado';
-import EditarEmpleado from './pages/EditarEmpleado';
 import Clientes from './pages/Clientes'; 
 import NuevoCliente from './pages/NuevoCliente'; 
 import EditarCliente from './pages/EditarCliente';
 import Proveedores from './pages/Proveedores'; 
 import NuevoProveedor from './pages/NuevoProveedor'; 
 import EditarProveedor from './pages/EditarProveedor';
-import AdminUsuarios from './pages/AdminUsuarios';
 import Unauthorized from './pages/Unauthorized';
 import Logout from './pages/Logout';
 
@@ -54,17 +51,6 @@ function App() {
             <Empleados />
           </PrivateRoute>
         } />
-        <Route path="/empleados/nuevo" element={
-          <PrivateRoute roles={['ADMIN']}>
-            <NuevoEmpleado />
-          </PrivateRoute>
-        } />
-        <Route path="/empleados/:id/editar" element={
-          <PrivateRoute roles={['ADMIN']}>
-            <EditarEmpleado />
-          </PrivateRoute>
-        } />
-
         {/* CRUD de Clientes (VENDEDOR y ADMIN) */}
         <Route path="/clientes" element={
           <PrivateRoute roles={['VENDEDOR','ADMIN']}>
@@ -81,7 +67,6 @@ function App() {
             <EditarCliente />
           </PrivateRoute>
         } />
-
         {/* CRUD de Proveedores (PRICING y ADMIN) */}
         <Route path="/proveedores" element={
           <PrivateRoute roles={['PRICING','ADMIN']}>
@@ -96,13 +81,6 @@ function App() {
         <Route path="/proveedores/:id/editar" element={
           <PrivateRoute roles={['PRICING','ADMIN']}>
             <EditarProveedor />
-          </PrivateRoute>
-        } />
-
-        {/* Dashboard de administrador para gestión de usuarios */}
-        <Route path="/admin/usuarios" element={
-          <PrivateRoute roles={['ADMIN']}>
-            <AdminUsuarios />
           </PrivateRoute>
         } />
 

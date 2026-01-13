@@ -1,10 +1,5 @@
-/* src/styles/empleados.css */
-/* Estilos compartidos para tablas de gestión con Bootstrap y paleta Performer */
-
-/* PAGE HEADER (ahora más compacto) */
-.page-header {
-  margin-bottom: 0;
-}
+/* src/styles/proveedores.css */
+/* Estilos específicos para el módulo de Proveedores */
 
 /* STATS CARDS con gradientes morados */
 .stats-grid {
@@ -62,10 +57,6 @@
   background: linear-gradient(135deg, #10b981 0%, #059669 100%);
 }
 
-.stat-icon-pendientes {
-  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-}
-
 .stat-icon-inactivos {
   background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
 }
@@ -90,16 +81,16 @@
   letter-spacing: 0.5px;
 }
 
-/* INFO SECTION (Reemplaza el subheader info) */
+/* INFO SECTION */
 .info-section {
-  background: linear-gradient(135deg, #f8f9fd 0%, #eef1f9 100%)!important;
+  background: linear-gradient(135deg, #f8f9fd 0%, #eef1f9 100%);
   border-radius: 10px;
   padding: 1rem 1.5rem;
   margin-bottom: 1.5rem;
   display: flex;
   align-items: center;
   gap: 2rem;
-  border: 1px solid #e2e8f0!important;
+  border: 1px solid #e2e8f0;
 }
 
 .info-item {
@@ -107,33 +98,33 @@
   align-items: center;
   gap: 0.6rem;
   font-size: 0.85rem;
-  color: #64748b!important;
+  color: #64748b;
 }
 
 .info-item i {
-  color: #5b4cdb!important;
+  color: #5b4cdb;
   font-size: 1rem;
 }
 
 .info-value {
   font-weight: 600;
-  color: #1a1a1a!important;
+  color: #1a1a1a;
 }
 
 .status-indicator {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: #10b981!important;
+  background: #10b981;
   animation: pulse 2s ease-in-out infinite;
 }
 
 .status-indicator.loading {
-  background: #f59e0b!important;
+  background: #f59e0b;
 }
 
 .status-indicator.error {
-  background: #ef4444!important;
+  background: #ef4444;
 }
 
 @keyframes pulse {
@@ -164,6 +155,11 @@
 }
 
 /* TABLE con Bootstrap y estilos personalizados */
+.table-wrapper {
+  overflow-x: auto;
+  overflow-y: visible;
+}
+
 .table-container {
   background: white;
   border-radius: 12px;
@@ -223,7 +219,7 @@
   width: 38px;
   height: 38px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #5b4cdb 0%, #7c6ee6 100%)!important;
+  background: linear-gradient(135deg, #5b4cdb 0%, #7c6ee6 100%);
   color: white;
   display: flex;
   align-items: center;
@@ -257,26 +253,6 @@
 .badge-inactivo {
   background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
   color: #991b1b;
-}
-
-.badge-pendiente {
-  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-  color: #92400e;
-}
-
-.badge-admin {
-  background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
-  color: #3730a3;
-}
-
-.badge-pricing {
-  background: linear-gradient(135deg, #ddd6fe 0%, #c4b5fd 100%);
-  color: #5b21b6;
-}
-
-.badge-vendedor {
-  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
-  color: #1e40af;
 }
 
 /* DROPDOWN de Bootstrap personalizado - Morado */
@@ -422,6 +398,11 @@
   animation: slideUp 0.3s ease;
 }
 
+/* Modal más ancho para formularios extensos */
+.modal-content-large {
+  max-width: 720px;
+}
+
 @keyframes fadeIn {
   from { opacity: 0; }
   to { opacity: 1; }
@@ -522,6 +503,13 @@
   justify-content: center;
 }
 
+/* FORM GRID para layouts de 2-3 columnas */
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.4rem;
+}
+
 .form-section {
   margin-bottom: 1.4rem;
 }
@@ -561,6 +549,38 @@
   border-color: #e2e8f0;
 }
 
+/* CHECKBOX personalizado */
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  cursor: pointer;
+  padding: 0.85rem 1rem;
+  background: #f8f9fd;
+  border-radius: 8px;
+  border: 2px solid #e2e8f0;
+  transition: all 0.2s ease;
+}
+
+.checkbox-label:hover {
+  border-color: #5b4cdb;
+  background: white;
+}
+
+.checkbox-input {
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+  accent-color: #5b4cdb;
+  margin-right: 10px;
+}
+
+.checkbox-label span {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #2e1fd9;
+}
+
 .modal-footer {
   padding: 1.5rem 1.75rem;
   border-top: 2px solid #e2e8f0;
@@ -589,15 +609,6 @@
 .btn:hover {
   transform: translateY(-2px);
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
-}
-
-.btn-success {
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-  color: white;
-}
-
-.btn-success:hover {
-  background: linear-gradient(135deg, #059669 0%, #047857 100%);
 }
 
 .btn-danger {
@@ -652,11 +663,6 @@
   font-weight: 600;
 }
 
-/* SweetAlert2 */
-.swal2-container {
-  z-index: 3000 !important;
-}
-
 /* RESPONSIVE */
 @media (max-width: 768px) {
   .stats-grid {
@@ -680,6 +686,14 @@
   .modal-content {
     margin: 1rem;
     max-width: calc(100% - 2rem);
+  }
+
+  .modal-content-large {
+    max-width: calc(100% - 2rem);
+  }
+
+  .form-grid {
+    grid-template-columns: 1fr;
   }
 
   .modal-footer {

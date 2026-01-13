@@ -620,7 +620,7 @@ export default function Empleados() {
                   onClick={guardarCambios}
                 >
                   <i className="fa-solid fa-save"></i>
-                  Guardar Cambios
+                  Guardar
                 </button>
               </div>
             </div>
@@ -720,7 +720,7 @@ export default function Empleados() {
                   onClick={crearEmpleado}
                 >
                   <i className="fa-solid fa-plus"></i>
-                  Crear Empleado
+                  Crear
                 </button>
               </div>
             </div>

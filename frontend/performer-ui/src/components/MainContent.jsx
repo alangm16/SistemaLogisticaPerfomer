@@ -48,13 +48,13 @@ export default function MainContent({ rol, nombre }) {
       },
       { 
         label: 'Mis Solicitudes', 
-        path: '/mis-solicitudes', 
+        path: '/solicitudes/mis-solicitudes', 
         icon: 'fa-folder-open',
         description: 'Solicitudes que estoy gestionando'
       },
       { 
         label: 'Solicitudes Asignadas', 
-        path: '/solicitudes-asignadas', 
+        path: '/solicitudes/asignadas', 
         icon: 'fa-tasks',
         description: 'Solicitudes asignadas a mí'
       },
@@ -80,13 +80,13 @@ export default function MainContent({ rol, nombre }) {
       },
       { 
         label: 'Mis Solicitudes', 
-        path: '/mis-solicitudes', 
+        path: '/solicitudes/mis-solicitudes', 
         icon: 'fa-folder-open',
         description: 'Solicitudes que he creado'
       },
       { 
         label: 'Solicitudes Asignadas', 
-        path: '/solicitudes-asignadas', 
+        path: '/solicitudes/asignadas', 
         icon: 'fa-tasks',
         description: 'Solicitudes asignadas a mí'
       },
@@ -95,6 +95,12 @@ export default function MainContent({ rol, nombre }) {
         path: '/clientes', 
         icon: 'fa-building',
         description: 'Gestionar mis clientes'
+      },
+      { 
+        label: 'Proveedores', 
+        path: '/proveedores', 
+        icon: 'fa-truck',
+        description: 'Gestionar proveedores'
       },
       { 
         label: 'Cotizaciones Recientes', 

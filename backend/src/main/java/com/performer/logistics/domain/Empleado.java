@@ -61,4 +61,21 @@ public class Empleado {
     public Estado getEstado() {return estado; }
     public void setEstado(Estado estado){ this.estado = estado; }
 
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public LocalDateTime getCreadoEn() {
+        return creadoEn;
+    }
+
+    public void setCreadoEn(LocalDateTime creadoEn) {
+        this.creadoEn = creadoEn;
+    }
+
+    
 }

@@ -8,4 +8,6 @@ import java.util.List;
 public interface CotizacionRepository extends JpaRepository<Cotizacion, Long> {
     List<Cotizacion> findBySolicitudId(Long solicitudId);
     List<Cotizacion> findByProveedorId(Long proveedorId);
+    List<Cotizacion> findByEstado(Cotizacion.Estado estado);
+    List<Cotizacion> findByTipoTransporte(Cotizacion.TipoTransporte tipo);
 }

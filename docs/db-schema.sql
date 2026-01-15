@@ -123,3 +123,8 @@ CREATE TABLE correo (
   FOREIGN KEY (solicitud_id) REFERENCES solicitud(id),
   FOREIGN KEY (cotizacion_id) REFERENCES cotizacion(id)
 );
+
+CREATE INDEX idx_solicitud_cliente ON solicitud (cliente_id);
+CREATE INDEX idx_solicitud_asignado ON solicitud (asignado_a);
+CREATE INDEX idx_cotizacion_proveedor ON cotizacion (proveedor_id);
+CREATE INDEX idx_cotizacion_solicitud ON cotizacion (solicitud_id);

@@ -2,6 +2,8 @@
 package com.performer.logistics.controller;
 
 import com.performer.logistics.domain.Empleado;
+import com.performer.logistics.dto.EmpleadoDTO;
+import com.performer.logistics.mapper.EmpleadoMapper;
 import com.performer.logistics.service.EmpleadoService;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -18,8 +20,13 @@ public class EmpleadoController {
     }
 
     @GetMapping
-    @PreAuthorize("hasRole('ADMIN')")
-    public List<Empleado> listar() { return service.listar(); }
+    @PreAuthorize("hasAnyRole('ADMIN','PRICING')")
+    public List<EmpleadoDTO> listar() {
+        return service.listar()
+            .stream()
+            .map(EmpleadoMapper::toDTO)
+            .toList();
+    }
 
     @GetMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
@@ -54,6 +61,3 @@ public class EmpleadoController {
     }
     
 }
-
-
-

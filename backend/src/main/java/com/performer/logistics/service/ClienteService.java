@@ -1,6 +1,7 @@
 package com.performer.logistics.service;
 
 import com.performer.logistics.domain.Cliente;
+import com.performer.logistics.exception.BadRequestException;
 import com.performer.logistics.repository.ClienteRepository;
 import org.springframework.stereotype.Service;
 
@@ -25,10 +26,17 @@ public class ClienteService {
     }
 
     public Cliente guardar(Cliente cliente) {
+        if (cliente.getEmail() != null && clienteRepository.existsByEmail(cliente.getEmail())) { 
+            throw new BadRequestException("Ya existe un cliente con ese email"); 
+        } 
+        if (cliente.getRfc() != null && clienteRepository.existsByRfc(cliente.getRfc())) { 
+            throw new BadRequestException("Ya existe un cliente con ese RFC"); 
+        } 
         return clienteRepository.save(cliente);
     }
 
     public Cliente actualizar(Long id, Cliente clienteActualizado) {
+        
         return clienteRepository.findById(id)
                 .map(c -> {
                     c.setNombre(clienteActualizado.getNombre());
@@ -40,6 +48,16 @@ public class ClienteService {
                     c.setPais(clienteActualizado.getPais());
                     c.setCodigoPostal(clienteActualizado.getCodigoPostal());
                     c.setActivo(clienteActualizado.getActivo());
+                    
+                    if (clienteActualizado.getEmail() != null && !clienteActualizado.getEmail().equals(c.getEmail())
+                            && clienteRepository.existsByEmail(clienteActualizado.getEmail())) {
+                        throw new BadRequestException("Email ya registrado por otro cliente");
+                    }
+                    if (clienteActualizado.getRfc() != null && !clienteActualizado.getRfc().equals(c.getRfc())
+                            && clienteRepository.existsByRfc(clienteActualizado.getRfc())) {
+                        throw new BadRequestException("RFC ya registrado por otro cliente");
+}
+
                     return clienteRepository.save(c);
                 })
                 .orElseThrow(() -> new RuntimeException("Cliente no encontrado con id " + id));

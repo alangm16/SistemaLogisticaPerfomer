@@ -16,16 +16,17 @@ export default function Sidebar({ rol }) {
     ],
     PRICING: [
       { label: 'Solicitudes', path: '/solicitudes', icon: 'fa-file-alt' },
-      { label: 'Mis Solicitudes', path: '/mis-solicitudes', icon: 'fa-folder-open' },
-      { label: 'Solicitudes Asignadas', path: '/solicitudes-asignadas', icon: 'fa-tasks' },
+      { label: 'Mis Solicitudes', path: '/solicitudes/mis-solicitudes', icon: 'fa-folder-open' },
+      { label: 'Solicitudes Asignadas', path: '/solicitudes/asignadas', icon: 'fa-tasks' },
       { label: 'Proveedores', path: '/proveedores', icon: 'fa-truck' },
       { label: 'Cotizaciones', path: '/cotizaciones', icon: 'fa-calculator' },
     ],
     VENDEDOR: [
       { label: 'Nueva Solicitud', path: '/solicitudes/nueva', icon: 'fa-plus-circle' },
-      { label: 'Mis Solicitudes', path: '/mis-solicitudes', icon: 'fa-folder-open' },
-      { label: 'Solicitudes Asignadas', path: '/solicitudes-asignadas', icon: 'fa-tasks' },
+      { label: 'Mis Solicitudes', path: '/solicitudes/mis-solicitudes', icon: 'fa-folder-open' },
+      { label: 'Solicitudes Asignadas', path: '/solicitudes/asignadas', icon: 'fa-tasks' },
       { label: 'Clientes', path: '/clientes', icon: 'fa-building' },
+      { label: 'Proveedores', path: '/proveedores', icon: 'fa-truck', description: 'Gestionar proveedores' },
       { label: 'Cotizaciones Recientes', path: '/cotizaciones', icon: 'fa-clock' },
     ],
   };

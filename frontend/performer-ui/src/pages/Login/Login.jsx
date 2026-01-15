@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { api } from '../services/api';
+import { api } from '../../services/api';
 import { useNavigate } from 'react-router-dom';
-import '../styles/login.css';
+import '../../styles/login.css';
 
 export default function Login() {
   const [email, setEmail] = useState('');

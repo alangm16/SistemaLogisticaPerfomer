@@ -135,7 +135,5 @@ public class Cliente {
     public void setCreadoEn(LocalDateTime creadoEn) {
         this.creadoEn = creadoEn;
     }
-    
-    
+     
 }
-

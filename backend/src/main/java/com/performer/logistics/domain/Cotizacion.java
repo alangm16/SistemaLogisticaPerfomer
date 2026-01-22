@@ -182,6 +182,5 @@ public class Cotizacion {
 
     public void setCreadoEn(LocalDateTime creadoEn) {
         this.creadoEn = creadoEn;
-    }
-    
+    }   
 }

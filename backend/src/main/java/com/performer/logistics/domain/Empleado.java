@@ -75,7 +75,5 @@ public class Empleado {
 
     public void setCreadoEn(LocalDateTime creadoEn) {
         this.creadoEn = creadoEn;
-    }
-
-    
+    }   
 }

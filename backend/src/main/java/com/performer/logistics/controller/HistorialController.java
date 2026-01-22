@@ -32,4 +32,3 @@ public class HistorialController {
         return historialService.listarPorEntidad(tipo, id);
     }
 }
-

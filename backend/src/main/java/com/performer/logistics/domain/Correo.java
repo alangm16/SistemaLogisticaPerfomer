@@ -96,5 +96,4 @@ public class Correo {
         this.enviadoEn = enviadoEn;
     }
     
-    
 }

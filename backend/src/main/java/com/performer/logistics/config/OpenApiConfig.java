@@ -15,4 +15,3 @@ public class OpenApiConfig {
                 .description("Contratos REST para solicitudes, cotizaciones, clientes y proveedores"));
     }
 }
-

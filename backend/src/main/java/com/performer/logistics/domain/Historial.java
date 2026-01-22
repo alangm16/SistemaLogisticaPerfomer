@@ -135,5 +135,4 @@ public class Historial {
             return new Historial(id, entidadTipo, entidadId, accion, detalle, usuario);
         }
     }
-
 }

@@ -10,4 +10,3 @@ public record EmpleadoDTO(
         Empleado.Estado estado
         ) {
 }
-

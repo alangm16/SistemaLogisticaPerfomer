@@ -4,7 +4,9 @@ import Login from './pages/Login/Login';
 import Empleados from './pages/Empleados';
 import Clientes from './pages/Clientes'; 
 import Proveedores from './pages/Proveedores'; 
-import Cotizaciones from './pages/Cotizaciones';
+import Cotizaciones from './pages/Cotizaciones/Cotizaciones';
+import NuevaCotizacion from './pages/Cotizaciones/NuevaCotizacion.jsx';
+import DetallesCotizacion from './pages/Cotizaciones/DetallesCotizacion.jsx'
 import Solicitudes from './pages/Solicitudes/Solicitudes';
 import SolicitudesAsignadas from './pages/Solicitudes/SolicitudesAsignadas';
 import NuevaSolicitud from './pages/Solicitudes/NuevaSolicitud';
@@ -68,6 +70,14 @@ function App() {
         <Route path="/cotizaciones" element={ <PrivateRoute roles={['PRICING','VENDEDOR','ADMIN']}>
             <Cotizaciones />
           </PrivateRoute>
+        } />
+        <Route path="/cotizaciones/nueva" element={ <PrivateRoute roles={['PRICING','VENDEDOR']}>
+          <NuevaCotizacion />
+        </PrivateRoute>
+        } />
+        <Route path="/cotizaciones/:id" element={ <PrivateRoute roles={['PRICING','VENDEDOR']}>
+          <DetallesCotizacion />
+        </PrivateRoute> 
         } />
         <Route path="/solicitudes/nueva" element={<PrivateRoute roles={['VENDEDOR']}>
           <NuevaSolicitud />

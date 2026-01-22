@@ -47,5 +47,3 @@ public class ClienteController {
         clienteService.eliminar(id);
     }
 }
-
-

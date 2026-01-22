@@ -297,6 +297,5 @@ public class Solicitud {
     public void setCreadoEn(LocalDateTime creadoEn) {
         this.creadoEn = creadoEn;
     }
-    
+   
 }
-

@@ -10,6 +10,7 @@ import Swal from 'sweetalert2';
 import authHeader from '../../services/authHeader'
 import '../../styles/dashboard.css';
 import '../../styles/solicitudes.css';
+import '../../styles/generales.css';
 
 export default function MisSolicitudes() {
   const navigate = useNavigate();

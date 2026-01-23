@@ -1,8 +1,6 @@
 /* src/styles/dashboard.css */
 
-/* ============================================
-   VARIABLES Y LAYOUT PRINCIPAL
-============================================ */
+/* VARIABLES Y LAYOUT PRINCIPAL*/
 
 :root {
   --header-height: 65px;
@@ -32,9 +30,7 @@
   color: var(--black);
 }
 
-/* ============================================
-   SIDEBAR - Desplegable con gradiente morado
-============================================ */
+/* SIDEBAR */
 
 .sidebar {
   position: fixed;
@@ -147,9 +143,7 @@
   opacity: 1;
 }
 
-/* ============================================
-   CONTENIDO PRINCIPAL
-============================================ */
+/* CONTENIDO PRINCIPAL */
 
 .dashboard-content {
   flex: 1;
@@ -160,9 +154,7 @@
   transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* ============================================
-   HEADER con gradiente morado y amarillo
-============================================ */
+/* HEADER */
 
 .header {
   position: sticky;
@@ -305,9 +297,7 @@
   box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
 }
 
-/* ============================================
-   SUBHEADER Compacto con búsqueda y filtros
-============================================ */
+/* SUBHEADER */
 
 .subheader {
   min-height: var(--subheader-height);
@@ -438,9 +428,7 @@
   font-size: 0.9rem;
 }
 
-/* ============================================
-   MAIN PANEL
-============================================ */
+/* MAIN PANEL*/
 
 .main-panel {
   flex: 1;
@@ -534,9 +522,7 @@
   line-height: 1.5;
 }
 
-/* ============================================
-   FOOTER
-============================================ */
+/* FOOTER */
 
 .footer {
   height: var(--footer-height);
@@ -549,63 +535,7 @@
   color: var(--gray-text);
 }
 
-/* ============================================
-   INFO SECTION (reemplaza subheader info)
-============================================ */
-
-.info-section {
-  background: linear-gradient(135deg, #f8f9fd 0%, #eef1f9 100%);
-  border-radius: 10px;
-  padding: 1rem 1.5rem;
-  margin-bottom: 1.5rem;
-  display: flex;
-  align-items: center;
-  gap: 2rem;
-  border: 1px solid var(--gray-border);
-}
-
-.info-item {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  font-size: 0.85rem;
-  color: var(--gray-text);
-}
-
-.info-item i {
-  color: var(--purple-main);
-  font-size: 1rem;
-}
-
-.info-value {
-  font-weight: 600;
-  color: var(--black);
-}
-
-.status-indicator {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #10b981;
-  animation: pulse 2s ease-in-out infinite;
-}
-
-.status-indicator.loading {
-  background: #f59e0b;
-}
-
-.status-indicator.error {
-  background: #ef4444;
-}
-
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
-}
-
-/* ============================================
-   RESPONSIVE
-============================================ */
+/* RESPONSIVE */
 
 @media (max-width: 768px) {
   .sidebar {

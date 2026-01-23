@@ -7,7 +7,7 @@ import Subheader from '../components/Subheader';
 import Footer from '../components/Footer';
 import Swal from 'sweetalert2';
 import '../styles/dashboard.css';
-import '../styles/proveedores.css';
+import '../styles/generales.css';
 
 export default function Proveedores() {
   const [proveedores, setProveedores] = useState([]);

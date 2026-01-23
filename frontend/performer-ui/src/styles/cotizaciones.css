@@ -50,16 +50,6 @@
   border: 2px solid #e2e8f0;
 }
 
-/* ACCIONES DEL FORMULARIO */
-.form-actions {
-  display: flex;
-  gap: 1rem;
-  justify-content: flex-end;
-  margin-top: 2rem;
-  padding-top: 1.5rem;
-  border-top: 2px solid #e2e8f0;
-}
-
 .btn-back {
   display: flex;
   align-items: center;
@@ -100,11 +90,6 @@
 .badge-aereo {
   background: linear-gradient(135deg, #fce7f3 0%, #fbcfe8 100%);
   color: #9f1239;
-}
-
-/* STAT ICON para completadas */
-.stat-icon-completadas {
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
 }
 
 /* FOLIO BADGE */
@@ -150,11 +135,6 @@
   font-size: 0.95rem;
 }
 
-/* MODAL WIDE para formularios de cotizaciones */
-.modal-content-wide {
-  max-width: 900px;
-}
-
 /* COTIZACION DETAILS CARD */
 .cotizacion-details-card {
   text-align: center;
@@ -191,14 +171,6 @@
   font-size: 0.95rem;
   margin: 0 0 1.25rem 0;
   font-weight: 600;
-}
-
-/* FORM GRID para layouts de 2 columnas */
-.form-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 1.4rem;
-  margin-bottom: 1.4rem;
 }
 
 /* TARJETAS DE INFORMACIÓN */

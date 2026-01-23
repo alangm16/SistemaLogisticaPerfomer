@@ -9,6 +9,7 @@ import Footer from '../../components/Footer';
 import Swal from 'sweetalert2';
 import '../../styles/dashboard.css';
 import '../../styles/cotizaciones.css';
+import '../../styles/generales.css';
 
 export default function Cotizaciones() {
   const navigate = useNavigate();

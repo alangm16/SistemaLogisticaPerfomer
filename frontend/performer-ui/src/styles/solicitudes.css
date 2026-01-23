@@ -1,95 +1,7 @@
 /* src/styles/solicitudes.css */
 /* Estilos específicos para el módulo de Solicitudes */
 
-/* ============================================
-   STATS CARDS
-============================================ */
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 1.5rem;
-  margin-bottom: 2rem;
-}
-
-.stat-card {
-  background: white;
-  border-radius: 12px;
-  padding: 1.5rem;
-  border: 1px solid #e2e8f0;
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  transition: all 0.3s ease;
-  position: relative;
-  overflow: hidden;
-}
-
-.stat-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 4px;
-  height: 100%;
-  background: linear-gradient(180deg, #5b4cdb 0%, #fff200 100%);
-}
-
-.stat-card:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 8px 20px rgba(91, 76, 219, 0.15);
-}
-
-.stat-icon {
-  width: 60px;
-  height: 60px;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.6rem;
-  color: white;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-}
-
-.stat-icon-total {
-  background: linear-gradient(135deg, #5b4cdb 0%, #7c6ee6 100%);
-}
-
-.stat-icon-pendientes {
-  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-}
-
-.stat-icon-enviadas {
-  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-}
-
-.stat-icon-completadas {
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-}
-
-.stat-content {
-  flex: 1;
-}
-
-.stat-value {
-  font-size: 2.2rem;
-  font-weight: 800;
-  color: #2e1fd9;
-  line-height: 1;
-}
-
-.stat-label {
-  font-size: 0.85rem;
-  color: #64748b;
-  margin-top: 0.4rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-/* ============================================
-   STEPPER - Indicador de pasos
-============================================ */
+/* STEPPER */
 .stepper-container {
   background: white;
   border-radius: 12px;
@@ -173,9 +85,7 @@
   color: #10b981;
 }
 
-/* ============================================
-   FORMULARIO MULTI-PASO
-============================================ */
+/* FORMULARIO-MULTIPASO */
 .form-step-container {
   background: white;
   border-radius: 12px;
@@ -199,13 +109,6 @@
   margin-bottom: 2.5rem;
 }
 
-.form-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 1.5rem;
-  margin-bottom: 1.5rem;
-}
-
 .form-grid-2 {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -213,56 +116,9 @@
   margin-bottom: 1.5rem;
 }
 
-.form-section {
-  margin-bottom: 1.5rem;
-}
-
-.form-section label {
-  display: block;
-  font-size: 0.875rem;
-  font-weight: 700;
-  color: #2e1fd9;
-  margin-bottom: 0.6rem;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
 .required-field::after {
   content: ' *';
   color: #ef4444;
-}
-
-.form-input,
-.form-select,
-.form-textarea {
-  width: 100%;
-  padding: 0.85rem 1rem;
-  border: 2px solid #e2e8f0;
-  border-radius: 8px;
-  font-size: 0.95rem;
-  font-family: inherit;
-  transition: all 0.2s ease;
-  background: white;
-}
-
-.form-input:focus,
-.form-select:focus,
-.form-textarea:focus {
-  outline: none;
-  border-color: #5b4cdb;
-  box-shadow: 0 0 0 3px rgba(91, 76, 219, 0.1);
-}
-
-.form-input:disabled,
-.form-select:disabled {
-  background: #f8f9fd;
-  color: #64748b;
-  cursor: not-allowed;
-}
-
-.form-textarea {
-  min-height: 100px;
-  resize: vertical;
 }
 
 .checkbox-group {
@@ -282,13 +138,6 @@
   background: white;
 }
 
-.checkbox-input {
-  width: 20px;
-  height: 20px;
-  cursor: pointer;
-  accent-color: #5b4cdb;
-}
-
 .checkbox-label-text {
   font-size: 0.95rem;
   font-weight: 600;
@@ -296,9 +145,7 @@
   cursor: pointer;
 }
 
-/* ============================================
-   EMPRESA SELECTOR
-============================================ */
+/* EMPRESA SELECTOR*/
 .empresa-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -376,9 +223,7 @@
   letter-spacing: 1px;
 }
 
-/* ============================================
-   ORIGEN Y DESTINO
-============================================ */
+/* ORIGEN Y DESTINO*/
 .origen-destino-container {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -402,9 +247,7 @@
   letter-spacing: 1px;
 }
 
-/* ============================================
-   BOTONES DE NAVEGACIÓN
-============================================ */
+/* BOTONES DE NAVEGACION */
 .form-navigation {
   display: flex;
   gap: 1rem;
@@ -414,181 +257,7 @@
   border-top: 2px solid #e2e8f0;
 }
 
-.btn {
-  padding: 0.85rem 1.8rem;
-  border-radius: 8px;
-  font-size: 0.9rem;
-  font-weight: 700;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.6rem;
-  transition: all 0.2s ease;
-  border: none;
-  cursor: pointer;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.btn-secondary {
-  background: #e2e8f0;
-  color: #64748b;
-}
-
-.btn-secondary:hover:not(:disabled) {
-  background: #cbd5e1;
-  transform: translateY(-2px);
-}
-
-.btn-primary {
-  background: linear-gradient(135deg, #5b4cdb 0%, #7c6ee6 100%);
-  color: white;
-  box-shadow: 0 4px 12px rgba(91, 76, 219, 0.3);
-}
-
-.btn-primary:hover:not(:disabled) {
-  background: linear-gradient(135deg, #2e1fd9 0%, #5b4cdb 100%);
-  transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(91, 76, 219, 0.4);
-}
-
-.btn-success {
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-  color: white;
-  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
-}
-
-.btn-success:hover:not(:disabled) {
-  background: linear-gradient(135deg, #059669 0%, #047857 100%);
-  transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(16, 185, 129, 0.4);
-}
-
-/* ============================================
-   BADGES DE ESTADO
-============================================ */
-.badge {
-  display: inline-block;
-  padding: 0.4rem 0.9rem;
-  border-radius: 999px;
-  font-size: 0.72rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.6px;
-}
-
-.badge-pendiente {
-  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-  color: #92400e;
-}
-
-.badge-enviado {
-  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
-  color: #1e40af;
-}
-
-.badge-completado {
-  background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
-  color: #065f46;
-}
-
-.badge-cancelado {
-  background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
-  color: #991b1b;
-}
-
-/* ============================================
-   TABLA DE SOLICITUDES
-============================================ */
-.table-container {
-  background: white;
-  border-radius: 12px;
-  border: 1px solid #e2e8f0;
-  overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-}
-
-.data-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.data-table thead {
-  background: linear-gradient(135deg, #5b4cdb 0%, #7c6ee6 100%);
-}
-
-.data-table th {
-  padding: 1.1rem 1.5rem;
-  text-align: left;
-  font-size: 0.8rem;
-  font-weight: 700;
-  color: white;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  border: none;
-}
-
-.data-table tbody tr {
-  border-bottom: 1px solid #e2e8f0;
-  transition: all 0.2s ease;
-}
-
-.data-table tbody tr:hover {
-  background: #f8f9fd;
-}
-
-.data-table td {
-  padding: 1.2rem 1.5rem;
-  font-size: 0.9rem;
-  color: #1a1a1a;
-}
-
-/* ============================================
-   LOADING Y EMPTY STATES
-============================================ */
-.loading-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-height: 450px;
-  color: #64748b;
-}
-
-.spinner {
-  width: 54px;
-  height: 54px;
-  border: 5px solid #e2e8f0;
-  border-top-color: #5b4cdb;
-  border-radius: 50%;
-  animation: spin 0.7s linear infinite;
-  margin-bottom: 1.5rem;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-.empty-state {
-  text-align: center;
-  padding: 4rem 2rem;
-  color: #64748b;
-}
-
-.empty-state i {
-  font-size: 4.5rem;
-  margin-bottom: 1.5rem;
-  opacity: 0.2;
-  color: #5b4cdb;
-}
-
-/* ============================================
-   MODAL DETALLE DE SOLICITUD
-============================================ */
+/* MODAL DETALLE DE SOLICITUD */
 .solicitud-header-detail {
   background: linear-gradient(135deg, #f8f9fd 0%, #eef1f9 100%);
   border-radius: 12px;
@@ -677,9 +346,7 @@
   margin-bottom: 0;
 }
 
-/* ============================================
-   RESPONSIVE
-============================================ */
+/* RESPONSIVE */
 @media (max-width: 768px) {
   .stats-grid {
     grid-template-columns: 1fr;

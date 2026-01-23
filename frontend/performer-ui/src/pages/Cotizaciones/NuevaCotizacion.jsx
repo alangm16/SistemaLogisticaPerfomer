@@ -1,10 +1,11 @@
-// src/pages/Cotizaciones/NuevaCotizacion.jsx
+// src/pages/Cotizaciones/NuevaCotizacion.jsx - VERSIÓN OPTIMIZADA
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../../services/api';
 import Sidebar from '../../components/Sidebar';
 import Header from '../../components/Header';
 import Footer from '../../components/Footer';
+import FormField from '../../components/FormField';
 import Swal from 'sweetalert2';
 import '../../styles/dashboard.css';
 import '../../styles/cotizaciones.css';
@@ -35,9 +36,7 @@ export default function NuevaCotizacion() {
   const rol = localStorage.getItem('rol');
   const nombre = localStorage.getItem('nombre');
 
-  useEffect(() => {
-    cargarDatos();
-  }, []);
+  useEffect(() => { cargarDatos(); }, []);
 
   const cargarDatos = async () => {
     try {
@@ -70,7 +69,10 @@ export default function NuevaCotizacion() {
   };
 
   const crearCotizacion = async () => {
-    if (!formData.solicitudId || !formData.proveedorId || !formData.costo || !formData.origen || !formData.destino) {
+    const camposRequeridos = ['solicitudId', 'proveedorId', 'costo', 'origen', 'destino'];
+    const faltanCampos = camposRequeridos.filter(campo => !formData[campo]);
+    
+    if (faltanCampos.length > 0) {
       Swal.fire({
         icon: 'warning',
         title: 'Campos incompletos',
@@ -127,6 +129,37 @@ export default function NuevaCotizacion() {
     }
   };
 
+  // Componentes reutilizables internos
+  const TransportTab = ({ tipo, icon, label }) => (
+    <button
+      className={`transport-tab ${tipoTransporteActivo === tipo ? 'active' : ''}`}
+      onClick={() => cambiarTipoTransporte(tipo)}
+    >
+      <i className={`fa-solid ${icon}`}></i>
+      {label}
+    </button>
+  );
+
+  const ActionButton = ({ onClick, icon, label, type = 'primary', size = 'normal' }) => (
+    <button className={`btn btn-${type} ${size === 'large' ? 'btn-large' : ''}`} onClick={onClick}>
+      <i className={`fa-solid ${icon}`}></i>
+      {label}
+    </button>
+  );
+
+  const transportTabs = [
+    { tipo: 'AEREO', icon: 'fa-plane', label: 'AÉREA' },
+    { tipo: 'MARITIMO', icon: 'fa-ship', label: 'MARÍTIMA' },
+    { tipo: 'TERRESTRE', icon: 'fa-truck', label: 'TERRESTRE' }
+  ];
+
+  const estadoOptions = [
+    { value: 'PENDIENTE', label: 'Pendiente' },
+    { value: 'ENVIADO', label: 'Enviado' },
+    { value: 'COMPLETADO', label: 'Completado' },
+    { value: 'CANCELADO', label: 'Cancelado' }
+  ];
+
   if (loading) {
     return (
       <div className="dashboard-layout">
@@ -153,13 +186,12 @@ export default function NuevaCotizacion() {
 
         <div className="subheader">
           <div className="subheader-left">
-            <button 
-              className="btn-back"
+            <ActionButton
               onClick={() => navigate('/cotizaciones')}
-            >
-              <i className="fa-solid fa-arrow-left"></i>
-              Volver
-            </button>
+              icon="fa-arrow-left"
+              label="Volver"
+              type="secondary"
+            />
             <h2 className="page-title-subheader">Nueva Cotización</h2>
           </div>
         </div>
@@ -167,192 +199,156 @@ export default function NuevaCotizacion() {
         <main className="main-panel">
           {/* Pestañas de tipo de transporte */}
           <div className="transport-tabs">
-            <button
-              className={`transport-tab ${tipoTransporteActivo === 'AEREO' ? 'active' : ''}`}
-              onClick={() => cambiarTipoTransporte('AEREO')}
-            >
-              <i className="fa-solid fa-plane"></i>
-              AÉREA
-            </button>
-            <button
-              className={`transport-tab ${tipoTransporteActivo === 'MARITIMO' ? 'active' : ''}`}
-              onClick={() => cambiarTipoTransporte('MARITIMO')}
-            >
-              <i className="fa-solid fa-ship"></i>
-              MARÍTIMA
-            </button>
-            <button
-              className={`transport-tab ${tipoTransporteActivo === 'TERRESTRE' ? 'active' : ''}`}
-              onClick={() => cambiarTipoTransporte('TERRESTRE')}
-            >
-              <i className="fa-solid fa-truck"></i>
-              TERRESTRE
-            </button>
+            {transportTabs.map((tab) => (
+              <TransportTab 
+                key={tab.tipo}
+                tipo={tab.tipo}
+                icon={tab.icon}
+                label={tab.label}
+              />
+            ))}
           </div>
 
           {/* Formulario de cotización */}
           <div className="cotizacion-form-container">
             <div className="form-grid">
-              <div className="form-section">
-                <label>Solicitud *</label>
-                <select 
-                  name="solicitudId"
-                  value={formData.solicitudId}
-                  onChange={handleInputChange}
-                  className="select-input"
-                >
-                  <option value="">Seleccionar solicitud</option>
-                  {solicitudes.map(s => (
-                    <option key={s.id} value={s.id}>
-                      {s.folioCodigo} - {s.cliente?.nombre}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              {/* Solicitud */}
+              <FormField
+                type="select"
+                label="Solicitud *"
+                name="solicitudId"
+                value={formData.solicitudId}
+                onChange={handleInputChange}
+                options={[
+                  { value: '', label: 'Seleccionar solicitud' },
+                  ...solicitudes.map(s => ({
+                    value: s.id,
+                    label: `${s.folioCodigo} - ${s.cliente?.nombre || 'Sin cliente'}`
+                  }))
+                ]}
+              />
 
-              <div className="form-section">
-                <label>Proveedor *</label>
-                <select 
-                  name="proveedorId"
-                  value={formData.proveedorId}
-                  onChange={handleInputChange}
-                  className="select-input"
-                >
-                  <option value="">Seleccionar proveedor</option>
-                  {proveedores.map(p => (
-                    <option key={p.id} value={p.id}>{p.nombre}</option>
-                  ))}
-                </select>
-              </div>
+              {/* Proveedor */}
+              <FormField
+                type="select"
+                label="Proveedor *"
+                name="proveedorId"
+                value={formData.proveedorId}
+                onChange={handleInputChange}
+                options={[
+                  { value: '', label: 'Seleccionar proveedor' },
+                  ...proveedores.map(p => ({
+                    value: p.id,
+                    label: p.nombre
+                  }))
+                ]}
+              />
 
-              <div className="form-section">
-                <label>Tipo de Unidad</label>
-                <input 
-                  type="text" 
-                  name="tipoUnidad"
-                  value={formData.tipoUnidad}
-                  onChange={handleInputChange}
-                  className="select-input"
-                  placeholder="Ej: Trailer, Torton, Contenedor 40HQ"
-                />
-              </div>
+              {/* Tipo de Unidad */}
+              <FormField
+                type="text"
+                label="Tipo de Unidad"
+                name="tipoUnidad"
+                value={formData.tipoUnidad}
+                onChange={handleInputChange}
+                placeholder="Ej: Trailer, Torton, Contenedor 40HQ"
+              />
 
-              <div className="form-section">
-                <label>Tiempo Estimado</label>
-                <input 
-                  type="text" 
-                  name="tiempoEstimado"
-                  value={formData.tiempoEstimado}
-                  onChange={handleInputChange}
-                  className="select-input"
-                  placeholder="Ej: 3-5 días"
-                />
-              </div>
+              {/* Tiempo Estimado */}
+              <FormField
+                type="text"
+                label="Tiempo Estimado"
+                name="tiempoEstimado"
+                value={formData.tiempoEstimado}
+                onChange={handleInputChange}
+                placeholder="Ej: 3-5 días"
+              />
 
-              <div className="form-section">
-                <label>Origen *</label>
-                <input 
-                  type="text" 
-                  name="origen"
-                  value={formData.origen}
-                  onChange={handleInputChange}
-                  className="select-input"
-                  placeholder="Ciudad de origen"
-                />
-              </div>
+              {/* Origen */}
+              <FormField
+                type="text"
+                label="Origen *"
+                name="origen"
+                value={formData.origen}
+                onChange={handleInputChange}
+                placeholder="Ciudad de origen"
+              />
 
-              <div className="form-section">
-                <label>Destino *</label>
-                <input 
-                  type="text" 
-                  name="destino"
-                  value={formData.destino}
-                  onChange={handleInputChange}
-                  className="select-input"
-                  placeholder="Ciudad de destino"
-                />
-              </div>
+              {/* Destino */}
+              <FormField
+                type="text"
+                label="Destino *"
+                name="destino"
+                value={formData.destino}
+                onChange={handleInputChange}
+                placeholder="Ciudad de destino"
+              />
 
-              <div className="form-section">
-                <label>Costo (USD) *</label>
-                <input 
-                  type="number" 
-                  name="costo"
-                  value={formData.costo}
-                  onChange={handleInputChange}
-                  className="select-input"
-                  placeholder="0.00"
-                  step="0.01"
-                />
-              </div>
+              {/* Costo */}
+              <FormField
+                type="number"
+                label="Costo (USD) *"
+                name="costo"
+                value={formData.costo}
+                onChange={handleInputChange}
+                placeholder="0.00"
+                step="0.01"
+              />
 
-              <div className="form-section">
-                <label>Válido Hasta</label>
-                <input 
-                  type="date" 
-                  name="validoHasta"
-                  value={formData.validoHasta}
-                  onChange={handleInputChange}
-                  className="select-input"
-                />
-              </div>
+              {/* Válido Hasta */}
+              <FormField
+                type="date"
+                label="Válido Hasta"
+                name="validoHasta"
+                value={formData.validoHasta}
+                onChange={handleInputChange}
+              />
 
-              <div className="form-section">
-                <label>Días de Crédito</label>
-                <input 
-                  type="number" 
-                  name="diasCredito"
-                  value={formData.diasCredito}
-                  onChange={handleInputChange}
-                  className="select-input"
-                  placeholder="0"
-                />
-              </div>
+              {/* Días de Crédito */}
+              <FormField
+                type="number"
+                label="Días de Crédito"
+                name="diasCredito"
+                value={formData.diasCredito}
+                onChange={handleInputChange}
+                placeholder="0"
+              />
 
-              <div className="form-section">
-                <label>Margen de Ganancia (%)</label>
-                <input 
-                  type="number" 
-                  name="margenGananciaPct"
-                  value={formData.margenGananciaPct}
-                  onChange={handleInputChange}
-                  className="select-input"
-                  placeholder="0.00"
-                  step="0.01"
-                />
-              </div>
+              {/* Margen de Ganancia */}
+              <FormField
+                type="number"
+                label="Margen de Ganancia (%)"
+                name="margenGananciaPct"
+                value={formData.margenGananciaPct}
+                onChange={handleInputChange}
+                placeholder="0.00"
+                step="0.01"
+              />
 
-              <div className="form-section">
-                <label>Estado</label>
-                <select 
-                  name="estado"
-                  value={formData.estado}
-                  onChange={handleInputChange}
-                  className="select-input"
-                >
-                  <option value="PENDIENTE">Pendiente</option>
-                  <option value="ENVIADO">Enviado</option>
-                  <option value="COMPLETADO">Completado</option>
-                  <option value="CANCELADO">Cancelado</option>
-                </select>
-              </div>
+              {/* Estado */}
+              <FormField
+                type="select"
+                label="Estado"
+                name="estado"
+                value={formData.estado}
+                onChange={handleInputChange}
+                options={estadoOptions}
+              />
             </div>
 
             <div className="modal-footer">
-              <button 
-                className="btn btn-secondary"
+              <ActionButton
                 onClick={() => navigate('/cotizaciones')}
-              >
-                <i className="fa-solid fa-times"></i>
-                Cancelar
-              </button>
-              <button 
-                className="btn btn-primary btn-large"
+                icon="fa-times"
+                label="Cancelar"
+                type="secondary"
+              />
+              <ActionButton
                 onClick={crearCotizacion}
-              >
-                <i className="fa-solid fa-plus"></i>
-                Crear Cotización
-              </button>
+                icon="fa-plus"
+                label="Crear Cotización"
+                size="large"
+              />
             </div>
           </div>
         </main>

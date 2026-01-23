@@ -1,11 +1,15 @@
 // src/pages/Cotizaciones/Cotizaciones.jsx
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../../services/api';
 import Sidebar from '../../components/Sidebar';
 import Header from '../../components/Header';
 import Subheader from '../../components/Subheader';
 import Footer from '../../components/Footer';
+import DataTable from '../../components/DataTable';
+import DropdownActions from '../../components/DropdownActions';
+import StatsGrid from '../../components/StatsGrid';
+import Badge from '../../components/Badge';
 import Swal from 'sweetalert2';
 import '../../styles/dashboard.css';
 import '../../styles/cotizaciones.css';
@@ -16,7 +20,6 @@ export default function Cotizaciones() {
   const [cotizaciones, setCotizaciones] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [status] = useState('ok');
   const [filtro, setFiltro] = useState('TODAS');
   const [busqueda, setBusqueda] = useState('');
 
@@ -101,42 +104,178 @@ export default function Cotizaciones() {
     }
   };
 
-  const cotizacionesFiltradas = cotizaciones.filter(c => {
-    const coincideBusqueda =
-      c.origen.toLowerCase().includes(busqueda.toLowerCase()) ||
-      c.destino.toLowerCase().includes(busqueda.toLowerCase()) ||
-      c.proveedor?.nombre?.toLowerCase().includes(busqueda.toLowerCase()) ||
-      c.solicitud?.folioCodigo?.toLowerCase().includes(busqueda.toLowerCase());
+  // Usar useMemo para filtrado eficiente
+  const cotizacionesFiltradas = useMemo(() => {
+    return cotizaciones.filter(c => {
+      const coincideBusqueda =
+        c.origen?.toLowerCase().includes(busqueda.toLowerCase()) ||
+        c.destino?.toLowerCase().includes(busqueda.toLowerCase()) ||
+        c.proveedor?.nombre?.toLowerCase().includes(busqueda.toLowerCase()) ||
+        c.solicitud?.folioCodigo?.toLowerCase().includes(busqueda.toLowerCase());
 
-    const coincideFiltro = filtro === 'TODAS' || c.estado === filtro;
+      const coincideFiltro = filtro === 'TODAS' || c.estado === filtro;
 
-    return coincideBusqueda && coincideFiltro;
-  });
+      return coincideBusqueda && coincideFiltro;
+    });
+  }, [cotizaciones, filtro, busqueda]);
 
-  const getEstadoBadgeClass = (estado) => {
-    switch (estado) {
-      case 'PENDIENTE': return 'badge-pendiente';
-      case 'ENVIADO': return 'badge-activo';
-      case 'COMPLETADO': return 'badge-vendedor';
-      case 'CANCELADO': return 'badge-inactivo';
-      default: return 'badge-default';
+  // Configuración de stats
+  const statsData = useMemo(() => {
+    const contadores = {
+      total: cotizaciones.length,
+      pendientes: cotizaciones.filter(c => c.estado === 'PENDIENTE').length,
+      enviadas: cotizaciones.filter(c => c.estado === 'ENVIADO').length,
+      completadas: cotizaciones.filter(c => c.estado === 'COMPLETADO').length,
+    };
+
+    return [
+      {
+        label: 'Total Cotizaciones',
+        value: contadores.total,
+        icon: 'fa-calculator',
+        iconClass: 'stat-icon-total'
+      },
+      {
+        label: 'Pendientes',
+        value: contadores.pendientes,
+        icon: 'fa-hourglass-half',
+        iconClass: 'stat-icon-pendientes'
+      },
+      {
+        label: 'Enviadas',
+        value: contadores.enviadas,
+        icon: 'fa-paper-plane',
+        iconClass: 'stat-icon-enviadas'
+      },
+      {
+        label: 'Completadas',
+        value: contadores.completadas,
+        icon: 'fa-check-circle',
+        iconClass: 'stat-icon-completadas'
+      }
+    ];
+  }, [cotizaciones]);
+
+  // Configuración de columnas para DataTable
+  const columns = [
+    {
+      header: 'Folio',
+      render: (c) => (
+        <span className="folio-badge">
+          {c.solicitud?.folioCodigo || 'N/A'}
+        </span>
+      )
+    },
+    {
+      header: 'Cliente',
+      render: (c) => c.solicitud?.cliente?.nombre || 'N/A'
+    },
+    {
+      header: 'Proveedor',
+      render: (c) => c.proveedor?.nombre || 'N/A'
+    },
+    {
+      header: 'Tipo',
+      render: (c) => {
+        const badgeTypes = {
+          TERRESTRE: 'terrestre',
+          MARITIMO: 'maritimo',
+          AEREO: 'aereo'
+        };
+        return (
+          <Badge type={badgeTypes[c.tipoTransporte] || 'default'}>
+            {c.tipoTransporte}
+          </Badge>
+        );
+      }
+    },
+    {
+      header: 'Ruta',
+      render: (c) => (
+        <div className="ruta-cell">
+          <span className="ruta-origen">{c.origen}</span>
+          <i className="fa-solid fa-arrow-right ruta-arrow"></i>
+          <span className="ruta-destino">{c.destino}</span>
+        </div>
+      )
+    },
+    {
+      header: 'Costo',
+      render: (c) => (
+        <span className="costo-cell">
+          ${c.costo?.toLocaleString('es-MX') || '0'}
+        </span>
+      )
+    },
+    {
+      header: 'Válido hasta',
+      render: (c) => c.validoHasta 
+        ? new Date(c.validoHasta).toLocaleDateString('es-MX') 
+        : 'N/A'
+    },
+    {
+      header: 'Estado',
+      render: (c) => {
+        const badgeTypes = {
+          PENDIENTE: 'pendiente',
+          ENVIADO: 'activo',
+          COMPLETADO: 'vendedor',
+          CANCELADO: 'inactivo'
+        };
+        return (
+          <Badge type={badgeTypes[c.estado] || 'default'}>
+            {c.estado}
+          </Badge>
+        );
+      }
     }
+  ];
+
+  // Renderizar acciones para DataTable
+  const renderActions = (cotizacion) => {
+    const items = [
+      {
+        label: 'Ver Detalles',
+        icon: 'fa-eye',
+        onClick: () => navigate(`/cotizaciones/${cotizacion.id}`)
+      }
+    ];
+
+    if (cotizacion.estado === 'PENDIENTE') {
+      items.push({
+        label: 'Marcar como Enviado',
+        icon: 'fa-paper-plane',
+        onClick: () => cambiarEstado(cotizacion.id, 'ENVIADO')
+      });
+    }
+
+    if (cotizacion.estado === 'ENVIADO') {
+      items.push({
+        label: 'Marcar como Completado',
+        icon: 'fa-check',
+        onClick: () => cambiarEstado(cotizacion.id, 'COMPLETADO')
+      });
+    }
+
+    items.push({ divider: true });
+    items.push({
+      label: 'Eliminar',
+      icon: 'fa-trash',
+      onClick: () => eliminar(cotizacion.id),
+      danger: true
+    });
+
+    return (
+      <DropdownActions
+        items={items}
+        buttonLabel="Opciones"
+      />
+    );
   };
 
-  const getTipoTransporteBadgeClass = (tipo) => {
-    switch (tipo) {
-      case 'TERRESTRE': return 'badge-terrestre';
-      case 'MARITIMO': return 'badge-maritimo';
-      case 'AEREO': return 'badge-aereo';
-      default: return 'badge-default';
-    }
-  };
-
-  const contadores = {
-    total: cotizaciones.length,
-    pendientes: cotizaciones.filter(c => c.estado === 'PENDIENTE').length,
-    enviadas: cotizaciones.filter(c => c.estado === 'ENVIADO').length,
-    completadas: cotizaciones.filter(c => c.estado === 'COMPLETADO').length,
+  // Manejar clic en fila
+  const handleRowClick = (cotizacion) => {
+    navigate(`/cotizaciones/${cotizacion.id}`);
   };
 
   if (loading) {
@@ -145,6 +284,7 @@ export default function Cotizaciones() {
         <Sidebar rol={rol} />
         <div className="dashboard-content">
           <Header nombre={nombre} rol={rol} />
+          <Subheader titulo="Gestión de Cotizaciones" />
           <main className="main-panel">
             <div className="loading-container">
               <div className="spinner"></div>
@@ -179,6 +319,7 @@ export default function Cotizaciones() {
         />
 
         <main className="main-panel">
+          {/* Info Section */}
           <div className="info-section">
             <div className="info-item">
               <i className="fa-solid fa-calendar"></i>
@@ -192,9 +333,9 @@ export default function Cotizaciones() {
               </span>
             </div>
             <div className="info-item">
-              <div className={status === 'ok' ? 'status-indicator' : 'status-indicator error'}></div>
+              <div className="status-indicator"></div>
               <span>Sistema:</span>
-              <span className="info-value">{status === 'ok' ? 'Operacional' : 'Error'}</span>
+              <span className="info-value">Operacional</span>
             </div>
             <div className="info-item">
               <i className="fa-solid fa-clock"></i>
@@ -205,48 +346,10 @@ export default function Cotizaciones() {
             </div>
           </div>
 
-          <div className="stats-grid">
-            <div className="stat-card">
-              <div className="stat-icon stat-icon-total">
-                <i className="fa-solid fa-calculator"></i>
-              </div>
-              <div className="stat-content">
-                <div className="stat-value">{contadores.total}</div>
-                <div className="stat-label">Total Cotizaciones</div>
-              </div>
-            </div>
+          {/* Stats Grid */}
+          <StatsGrid stats={statsData} />
 
-            <div className="stat-card">
-              <div className="stat-icon stat-icon-pendientes">
-                <i className="fa-solid fa-hourglass-half"></i>
-              </div>
-              <div className="stat-content">
-                <div className="stat-value">{contadores.pendientes}</div>
-                <div className="stat-label">Pendientes</div>
-              </div>
-            </div>
-
-            <div className="stat-card">
-              <div className="stat-icon stat-icon-activos">
-                <i className="fa-solid fa-paper-plane"></i>
-              </div>
-              <div className="stat-content">
-                <div className="stat-value">{contadores.enviadas}</div>
-                <div className="stat-label">Enviadas</div>
-              </div>
-            </div>
-
-            <div className="stat-card">
-              <div className="stat-icon stat-icon-completadas">
-                <i className="fa-solid fa-check-circle"></i>
-              </div>
-              <div className="stat-content">
-                <div className="stat-value">{contadores.completadas}</div>
-                <div className="stat-label">Completadas</div>
-              </div>
-            </div>
-          </div>
-
+          {/* Error Alert */}
           {error && (
             <div className="alert alert-error">
               <i className="fa-solid fa-exclamation-circle"></i>
@@ -254,134 +357,15 @@ export default function Cotizaciones() {
             </div>
           )}
 
-          <div className="table-container">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Folio</th>
-                  <th>Cliente</th>
-                  <th>Proveedor</th>
-                  <th>Tipo</th>
-                  <th>Ruta</th>
-                  <th>Costo</th>
-                  <th>Válido hasta</th>
-                  <th>Estado</th>
-                  <th>Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {cotizacionesFiltradas.map(c => (
-                  <tr key={c.id} onClick={() => navigate(`/cotizaciones/${c.id}`)} style={{ cursor: 'pointer' }}>
-                    <td>
-                      <span className="folio-badge">
-                        {c.solicitud?.folioCodigo || 'N/A'}
-                      </span>
-                    </td>
-                    <td>{c.solicitud?.cliente?.nombre || 'N/A'}</td>
-                    <td>{c.proveedor?.nombre || 'N/A'}</td>
-                    <td>
-                      <span className={`badge ${getTipoTransporteBadgeClass(c.tipoTransporte)}`}>
-                        {c.tipoTransporte}
-                      </span>
-                    </td>
-                    <td>
-                      <div className="ruta-cell">
-                        <span className="ruta-origen">{c.origen}</span>
-                        <i className="fa-solid fa-arrow-right ruta-arrow"></i>
-                        <span className="ruta-destino">{c.destino}</span>
-                      </div>
-                    </td>
-                    <td className="costo-cell">${c.costo?.toLocaleString('es-MX')}</td>
-                    <td>{c.validoHasta ? new Date(c.validoHasta).toLocaleDateString('es-MX') : 'N/A'}</td>
-                    <td>
-                      <span className={`badge ${getEstadoBadgeClass(c.estado)}`}>
-                        {c.estado}
-                      </span>
-                    </td>
-                    <td>
-                      <div className="dropdown">
-                        <button
-                          className="btn btn-sm btn-primary-app dropdown-toggle"
-                          data-bs-toggle="dropdown"
-                          aria-expanded="false"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          Opciones
-                        </button>
-
-                        <ul className="dropdown-menu dropdown-menu-end">
-                          <li>
-                            <button
-                              className="dropdown-item"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                navigate(`/cotizaciones/${c.id}`);
-                              }}
-                            >
-                              <i className="fa-solid fa-eye text-purple me-2"></i>
-                              Ver Detalles
-                            </button>
-                          </li>
-
-                          {c.estado === 'PENDIENTE' && (
-                            <li>
-                              <button
-                                className="dropdown-item"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  cambiarEstado(c.id, 'ENVIADO');
-                                }}
-                              >
-                                <i className="fa-solid fa-paper-plane text-purple me-2"></i>
-                                Marcar como Enviado
-                              </button>
-                            </li>
-                          )}
-
-                          {c.estado === 'ENVIADO' && (
-                            <li>
-                              <button
-                                className="dropdown-item"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  cambiarEstado(c.id, 'COMPLETADO');
-                                }}
-                              >
-                                <i className="fa-solid fa-check text-purple me-2"></i>
-                                Marcar como Completado
-                              </button>
-                            </li>
-                          )}
-
-                          <li><hr className="dropdown-divider" /></li>
-
-                          <li>
-                            <button
-                              className="dropdown-item text-danger"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                eliminar(c.id);
-                              }}
-                            >
-                              <i className="fa-solid fa-trash text-danger me-2"></i>
-                              Eliminar
-                            </button>
-                          </li>
-                        </ul>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-
-            {cotizacionesFiltradas.length === 0 && (
-              <div className="empty-state">
-                <i className="fa-solid fa-file-invoice"></i>
-                <p>No se encontraron cotizaciones</p>
-              </div>
-            )}
-          </div>
+          {/* Data Table */}
+          <DataTable
+            data={cotizacionesFiltradas}
+            columns={columns}
+            onRowClick={handleRowClick}
+            renderActions={renderActions}
+            emptyMessage="No se encontraron cotizaciones"
+            emptyIcon="fa-file-invoice"
+          />
         </main>
         <Footer />
       </div>

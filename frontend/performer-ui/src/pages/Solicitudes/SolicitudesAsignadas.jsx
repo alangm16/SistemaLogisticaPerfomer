@@ -1,11 +1,15 @@
 // src/pages/solicitudes/SolicitudesAsignadas.jsx
 import { useEffect, useState } from 'react';
-/* import { useNavigate } from 'react-router-dom'; */
 import { api } from '../../services/api';
 import Sidebar from '../../components/Sidebar';
 import Header from '../../components/Header';
 import Subheader from '../../components/Subheader';
 import Footer from '../../components/Footer';
+import DataTable from '../../components/DataTable';
+import DropdownActions from '../../components/DropdownActions';
+import Modal from '../../components/Modal';
+import StatsGrid from '../../components/StatsGrid';
+import Badge from '../../components/Badge';
 import Swal from 'sweetalert2';
 import authHeader from '../../services/authHeader';
 import '../../styles/dashboard.css';
@@ -13,9 +17,7 @@ import '../../styles/solicitudes.css';
 import '../../styles/generales.css';
 
 export default function SolicitudesAsignadas() {
-  /* const navigate = useNavigate(); */
   const [solicitudes, setSolicitudes] = useState([]);
-  const [solicitudesFiltradas, setSolicitudesFiltradas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [filtro, setFiltro] = useState('TODAS');
@@ -30,10 +32,6 @@ export default function SolicitudesAsignadas() {
     cargarSolicitudes();
   }, []);
 
-  useEffect(() => {
-    filtrarSolicitudes();
-  }, [solicitudes, filtro, busqueda]);
-
   const cargarSolicitudes = async () => {
     try {
       const res = await api.get('/solicitudes/asignadas', { headers: authHeader() });
@@ -46,26 +44,19 @@ export default function SolicitudesAsignadas() {
     }
   };
 
-  const filtrarSolicitudes = () => {
-    let resultado = [...solicitudes];
-
-    if (filtro !== 'TODAS') {
-      resultado = resultado.filter(s => s.estado === filtro);
-    }
-
-    if (busqueda) {
-      const termino = busqueda.toLowerCase();
-      resultado = resultado.filter(s =>
-        s.folioCodigo?.toLowerCase().includes(termino) ||
-        s.clienteNombre?.toLowerCase().includes(termino) ||
-        s.origenCiudad?.toLowerCase().includes(termino) ||
-        s.destinoCiudad?.toLowerCase().includes(termino) ||
-        s.tipoServicio?.toLowerCase().includes(termino)
-      );
-    }
-
-    setSolicitudesFiltradas(resultado);
-  };
+  // Filtrado de solicitudes
+  const solicitudesFiltradas = solicitudes.filter(s => {
+    const coincideBusqueda = 
+      s.folioCodigo?.toLowerCase().includes(busqueda.toLowerCase()) ||
+      s.clienteNombre?.toLowerCase().includes(busqueda.toLowerCase()) ||
+      s.origenCiudad?.toLowerCase().includes(busqueda.toLowerCase()) ||
+      s.destinoCiudad?.toLowerCase().includes(busqueda.toLowerCase()) ||
+      s.tipoServicio?.toLowerCase().includes(busqueda.toLowerCase());
+    
+    const coincideFiltro = filtro === 'TODAS' || s.estado === filtro;
+    
+    return coincideBusqueda && coincideFiltro;
+  });
 
   const abrirDetalle = async (solicitud) => {
     try {
@@ -105,6 +96,7 @@ export default function SolicitudesAsignadas() {
         params: { estado: nuevoEstado }
       });
       
+      // Actualizar estado local
       setSolicitudes(solicitudes.map(s => 
         s.id === id ? { ...s, estado: nuevoEstado } : s
       ));
@@ -116,7 +108,7 @@ export default function SolicitudesAsignadas() {
         showConfirmButton: false,
       });
 
-      cargarSolicitudes();
+      cargarSolicitudes(); // Recargar para obtener datos actualizados
     } catch (err) {
       console.error('Error cambiando estado:', err);
       Swal.fire({
@@ -127,14 +119,16 @@ export default function SolicitudesAsignadas() {
     }
   };
 
-  const getBadgeClass = (estado) => {
-    const badges = {
-      PENDIENTE: 'badge-pendiente',
-      ENVIADO: 'badge-enviado',
-      COMPLETADO: 'badge-completado',
-      CANCELADO: 'badge-cancelado',
+  // Funciones auxiliares
+  const getTipoServicioIcon = (tipo) => {
+    const icons = {
+      TERRESTRE: 'fa-truck',
+      MARITIMO: 'fa-ship',
+      AEREO: 'fa-plane',
+      MULTIMODAL: 'fa-route',
+      EXCESO_DIMENSIONES: 'fa-ruler-combined',
     };
-    return badges[estado] || 'badge-pendiente';
+    return icons[tipo] || 'fa-box';
   };
 
   const getEstadoIcon = (estado) => {
@@ -147,22 +141,142 @@ export default function SolicitudesAsignadas() {
     return icons[estado] || 'fa-clock';
   };
 
-  const getTipoServicioIcon = (tipo) => {
-    const icons = {
-      TERRESTRE: 'fa-truck',
-      MARITIMO: 'fa-ship',
-      AEREO: 'fa-plane',
-      MULTIMODAL: 'fa-route',
-      EXCESO_DIMENSIONES: 'fa-ruler-combined',
-    };
-    return icons[tipo] || 'fa-box';
-  };
-
+  // Contadores para las stats
   const contadores = {
     total: solicitudes.length,
     pendientes: solicitudes.filter(s => s.estado === 'PENDIENTE').length,
     enviadas: solicitudes.filter(s => s.estado === 'ENVIADO').length,
     completadas: solicitudes.filter(s => s.estado === 'COMPLETADO').length,
+  };
+
+  // Configuración de columnas para DataTable
+  const columns = [
+    {
+      header: 'Folio',
+      render: (s) => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <i className="fa-solid fa-barcode" style={{ color: '#5b4cdb' }}></i>
+          <strong>{s.folioCodigo}</strong>
+        </div>
+      )
+    },
+    {
+      header: 'Cliente',
+      render: (s) => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <i className="fa-solid fa-building" style={{ color: '#64748b' }}></i>
+          {s.clienteNombre}
+        </div>
+      )
+    },
+    {
+      header: 'Tipo Servicio',
+      render: (s) => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <i className={`fa-solid ${getTipoServicioIcon(s.tipoServicio)}`} style={{ color: '#5b4cdb' }}></i>
+          {s.tipoServicio}
+        </div>
+      )
+    },
+    {
+      header: 'Origen → Destino',
+      render: (s) => (
+        <div style={{ fontSize: '0.85rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', marginBottom: '0.2rem' }}>
+            <i className="fa-solid fa-location-dot" style={{ color: '#10b981', fontSize: '0.75rem' }}></i>
+            <span>{s.origenCiudad}, {s.origenPais}</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+            <i className="fa-solid fa-flag-checkered" style={{ color: '#ef4444', fontSize: '0.75rem' }}></i>
+            <span>{s.destinoCiudad}, {s.destinoPais}</span>
+          </div>
+        </div>
+      )
+    },
+    {
+      header: 'Fecha Emisión',
+      render: (s) => new Date(s.fechaEmision).toLocaleDateString('es-MX')
+    },
+    {
+      header: 'Estado',
+      render: (s) => (
+        <Badge type={s.estado.toLowerCase()}>
+          <i className={`fa-solid ${getEstadoIcon(s.estado)}`}></i>
+          {s.estado}
+        </Badge>
+      )
+    }
+  ];
+
+  // Configuración de stats para StatsGrid
+  const statsData = [
+    {
+      label: 'Total Asignadas',
+      value: contadores.total,
+      icon: 'fa-clipboard-list',
+      iconClass: 'stat-icon-total'
+    },
+    {
+      label: 'Por Procesar',
+      value: contadores.pendientes,
+      icon: 'fa-hourglass-half',
+      iconClass: 'stat-icon-pendientes'
+    },
+    {
+      label: 'En Proceso',
+      value: contadores.enviadas,
+      icon: 'fa-spinner',
+      iconClass: 'stat-icon-enviadas'
+    },
+    {
+      label: 'Completadas',
+      value: contadores.completadas,
+      icon: 'fa-check-double',
+      iconClass: 'stat-icon-completadas'
+    }
+  ];
+
+  // Obtener acciones dinámicas según el estado de la solicitud
+  const getAccionesSolicitud = (solicitud) => {
+    const acciones = [
+      {
+        label: 'Ver Detalles',
+        icon: 'fa-eye',
+        onClick: () => abrirDetalle(solicitud)
+      }
+    ];
+
+    // Solo agregar acciones de cambio de estado si está pendiente o enviada
+    if (solicitud.estado === 'PENDIENTE' || solicitud.estado === 'ENVIADO') {
+      acciones.push({ divider: true });
+      
+      if (solicitud.estado === 'PENDIENTE') {
+        acciones.push({
+          label: 'Marcar como Enviado',
+          icon: 'fa-paper-plane',
+          iconColor: '#3b82f6',
+          onClick: () => cambiarEstado(solicitud.id, 'ENVIADO')
+        });
+      }
+
+      if (solicitud.estado === 'ENVIADO') {
+        acciones.push({
+          label: 'Marcar como Completado',
+          icon: 'fa-circle-check',
+          iconColor: '#10b981',
+          onClick: () => cambiarEstado(solicitud.id, 'COMPLETADO')
+        });
+      }
+
+      acciones.push({
+        label: 'Cancelar',
+        icon: 'fa-ban',
+        onClick: () => cambiarEstado(solicitud.id, 'CANCELADO'),
+        danger: true
+      });
+    }
+
+    return acciones;
   };
 
   if (loading) {
@@ -171,7 +285,6 @@ export default function SolicitudesAsignadas() {
         <Sidebar rol={rol} />
         <div className="dashboard-content">
           <Header nombre={nombre} rol={rol} />
-          <Subheader titulo="Solicitudes Asignadas" />
           <main className="main-panel">
             <div className="loading-container">
               <div className="spinner"></div>
@@ -187,7 +300,7 @@ export default function SolicitudesAsignadas() {
   return (
     <div className="dashboard-layout">
       <Sidebar rol={rol} />
-      
+
       <div className="dashboard-content">
         <Header nombre={nombre} rol={rol} />
         <Subheader 
@@ -204,8 +317,9 @@ export default function SolicitudesAsignadas() {
             { valor: 'CANCELADO', label: 'Canceladas' }
           ]}
         />
-        
+
         <main className="main-panel">
+          {/* Info Section Personalizada para Solicitudes */}
           <div className="info-section">
             <div className="info-item">
               <i className="fa-solid fa-calendar"></i>
@@ -230,48 +344,10 @@ export default function SolicitudesAsignadas() {
             </div>
           </div>
 
-          <div className="stats-grid">
-            <div className="stat-card">
-              <div className="stat-icon stat-icon-total">
-                <i className="fa-solid fa-clipboard-list"></i>
-              </div>
-              <div className="stat-content">
-                <div className="stat-value">{contadores.total}</div>
-                <div className="stat-label">Total Asignadas</div>
-              </div>
-            </div>
+          {/* Stats Grid */}
+          <StatsGrid stats={statsData} />
 
-            <div className="stat-card">
-              <div className="stat-icon stat-icon-pendientes">
-                <i className="fa-solid fa-hourglass-half"></i>
-              </div>
-              <div className="stat-content">
-                <div className="stat-value">{contadores.pendientes}</div>
-                <div className="stat-label">Por Procesar</div>
-              </div>
-            </div>
-
-            <div className="stat-card">
-              <div className="stat-icon stat-icon-enviadas">
-                <i className="fa-solid fa-spinner"></i>
-              </div>
-              <div className="stat-content">
-                <div className="stat-value">{contadores.enviadas}</div>
-                <div className="stat-label">En Proceso</div>
-              </div>
-            </div>
-
-            <div className="stat-card">
-              <div className="stat-icon stat-icon-completadas">
-                <i className="fa-solid fa-check-double"></i>
-              </div>
-              <div className="stat-content">
-                <div className="stat-value">{contadores.completadas}</div>
-                <div className="stat-label">Completadas</div>
-              </div>
-            </div>
-          </div>
-
+          {/* Error Alert */}
           {error && (
             <div className="alert alert-error">
               <i className="fa-solid fa-exclamation-circle"></i>
@@ -279,295 +355,182 @@ export default function SolicitudesAsignadas() {
             </div>
           )}
 
-          <div className="table-container">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Folio</th>
-                  <th>Cliente</th>
-                  <th>Tipo Servicio</th>
-                  <th>Origen → Destino</th>
-                  <th>Fecha Emisión</th>
-                  <th>Estado</th>
-                  <th>Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {solicitudesFiltradas.map(solicitud => (
-                  <tr key={solicitud.id}>
-                    <td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <i className="fa-solid fa-barcode" style={{ color: '#5b4cdb' }}></i>
-                        <strong>{solicitud.folioCodigo}</strong>
-                      </div>
-                    </td>
-                    <td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <i className="fa-solid fa-building" style={{ color: '#64748b' }}></i>
-                        {solicitud.clienteNombre}
-                      </div>
-                    </td>
-                    <td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <i className={`fa-solid ${getTipoServicioIcon(solicitud.tipoServicio)}`} style={{ color: '#5b4cdb' }}></i>
-                        {solicitud.tipoServicio}
-                      </div>
-                    </td>
-                    <td>
-                      <div style={{ fontSize: '0.85rem' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', marginBottom: '0.2rem' }}>
-                          <i className="fa-solid fa-location-dot" style={{ color: '#10b981', fontSize: '0.75rem' }}></i>
-                          <span>{solicitud.origenCiudad}, {solicitud.origenPais}</span>
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                          <i className="fa-solid fa-flag-checkered" style={{ color: '#ef4444', fontSize: '0.75rem' }}></i>
-                          <span>{solicitud.destinoCiudad}, {solicitud.destinoPais}</span>
-                        </div>
-                      </div>
-                    </td>
-                    <td>
-                      {new Date(solicitud.fechaEmision).toLocaleDateString('es-MX')}
-                    </td>
-                    <td>
-                      <span className={`badge ${getBadgeClass(solicitud.estado)}`}>
-                        <i className={`fa-solid ${getEstadoIcon(solicitud.estado)}`}></i>
-                        {solicitud.estado}
-                      </span>
-                    </td>
-                    <td>
-                      <div className="dropdown">
-                        <button
-                          className="btn btn-sm btn-primary-app dropdown-toggle"
-                          data-bs-toggle="dropdown"
-                          aria-expanded="false"
-                        >
-                          <i className="fa-solid fa-ellipsis-vertical"></i>
-                        </button>
-
-                        <ul className="dropdown-menu dropdown-menu-end">
-                          <li>
-                            <button
-                              className="dropdown-item"
-                              onClick={() => abrirDetalle(solicitud)}
-                            >
-                              <i className="fa-solid fa-eye text-purple me-2"></i>
-                              Ver Detalles
-                            </button>
-                          </li>
-
-                          {(solicitud.estado === 'PENDIENTE' || solicitud.estado === 'ENVIADO') && (
-                            <>
-                              <li><hr className="dropdown-divider" /></li>
-                              
-                              {solicitud.estado === 'PENDIENTE' && (
-                                <li>
-                                  <button
-                                    className="dropdown-item"
-                                    onClick={() => cambiarEstado(solicitud.id, 'ENVIADO')}
-                                  >
-                                    <i className="fa-solid fa-paper-plane me-2" style={{ color: '#3b82f6' }}></i>
-                                    Marcar como Enviado
-                                  </button>
-                                </li>
-                              )}
-
-                              {solicitud.estado === 'ENVIADO' && (
-                                <li>
-                                  <button
-                                    className="dropdown-item"
-                                    onClick={() => cambiarEstado(solicitud.id, 'COMPLETADO')}
-                                  >
-                                    <i className="fa-solid fa-circle-check me-2" style={{ color: '#10b981' }}></i>
-                                    Marcar como Completado
-                                  </button>
-                                </li>
-                              )}
-
-                              <li>
-                                <button
-                                  className="dropdown-item text-danger"
-                                  onClick={() => cambiarEstado(solicitud.id, 'CANCELADO')}
-                                >
-                                  <i className="fa-solid fa-ban text-danger me-2"></i>
-                                  Cancelar
-                                </button>
-                              </li>
-                            </>
-                          )}
-                        </ul>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-
-            {solicitudesFiltradas.length === 0 && (
-              <div className="empty-state">
-                <i className="fa-solid fa-clipboard-question"></i>
-                <p>No hay solicitudes asignadas</p>
-              </div>
+          {/* Data Table */}
+          <DataTable
+            data={solicitudesFiltradas}
+            columns={columns}
+            renderActions={(solicitud) => (
+              <DropdownActions
+                items={getAccionesSolicitud(solicitud)}
+                buttonLabel={<i className="fa-solid fa-ellipsis-vertical"></i>}
+              />
             )}
-          </div>
+            emptyMessage="No hay solicitudes asignadas"
+            emptyIcon="fa-clipboard-question"
+          />
         </main>
-        
+
         <Footer />
       </div>
 
-      {/* Modal de Detalle */}
-      {modalDetalle && solicitudSeleccionada && (
-        <div className="modal-overlay" onClick={cerrarModal}>
-          <div className="modal-content modal-content-large" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3>
-                <i className="fa-solid fa-file-lines"></i> Detalle de Solicitud
-              </h3>
-              <button className="modal-close" onClick={cerrarModal}>
-                <i className="fa-solid fa-times"></i>
-              </button>
+      {/* Modal de Detalle de Solicitud */}
+      <Modal
+        isOpen={modalDetalle && solicitudSeleccionada}
+        onClose={cerrarModal}
+        title={
+          <>
+            <i className="fa-solid fa-file-lines"></i> Detalle de Solicitud
+          </>
+        }
+        large={true}
+        footer={
+          <button className="btn btn-secondary" onClick={cerrarModal}>
+            <i className="fa-solid fa-times"></i>
+            Cerrar
+          </button>
+        }
+      >
+        {solicitudSeleccionada && (
+          <div className="solicitud-detail-content">
+            {/* Encabezado de la solicitud */}
+            <div className="solicitud-header-detail">
+              <div className="detail-row">
+                <div className="detail-col">
+                  <label><i className="fa-solid fa-barcode"></i> Folio</label>
+                  <div className="detail-value">{solicitudSeleccionada.folioCodigo}</div>
+                </div>
+                <div className="detail-col">
+                  <label><i className="fa-solid fa-calendar"></i> Fecha Emisión</label>
+                  <div className="detail-value">
+                    {new Date(solicitudSeleccionada.fechaEmision).toLocaleDateString('es-MX')}
+                  </div>
+                </div>
+                <div className="detail-col">
+                  <label><i className="fa-solid fa-traffic-light"></i> Estado</label>
+                  <Badge type={solicitudSeleccionada.estado.toLowerCase()}>
+                    {solicitudSeleccionada.estado}
+                  </Badge>
+                </div>
+              </div>
             </div>
 
-            <div className="modal-body">
-              <div className="solicitud-header-detail">
-                <div className="detail-row">
-                  <div className="detail-col">
-                    <label><i className="fa-solid fa-barcode"></i> Folio</label>
-                    <div className="detail-value">{solicitudSeleccionada.folioCodigo}</div>
-                  </div>
-                  <div className="detail-col">
-                    <label><i className="fa-solid fa-calendar"></i> Fecha Emisión</label>
-                    <div className="detail-value">
-                      {new Date(solicitudSeleccionada.fechaEmision).toLocaleDateString('es-MX')}
-                    </div>
-                  </div>
-                  <div className="detail-col">
-                    <label><i className="fa-solid fa-traffic-light"></i> Estado</label>
-                    <span className={`badge ${getBadgeClass(solicitudSeleccionada.estado)}`}>
-                      {solicitudSeleccionada.estado}
-                    </span>
+            {/* Cliente y Servicio */}
+            <div className="detail-section">
+              <h4><i className="fa-solid fa-building"></i> Cliente y Servicio</h4>
+              <div className="detail-row">
+                <div className="detail-col">
+                  <label>Cliente</label>
+                  <div className="detail-value">{solicitudSeleccionada.clienteNombre}</div>
+                </div>
+                <div className="detail-col">
+                  <label>Tipo de Servicio</label>
+                  <div className="detail-value">
+                    <i className={`fa-solid ${getTipoServicioIcon(solicitudSeleccionada.tipoServicio)}`}></i>
+                    {' '}{solicitudSeleccionada.tipoServicio}
                   </div>
                 </div>
-              </div>
-
-              <div className="detail-section">
-                <h4><i className="fa-solid fa-building"></i> Cliente y Servicio</h4>
-                <div className="detail-row">
-                  <div className="detail-col">
-                    <label>Cliente</label>
-                    <div className="detail-value">{solicitudSeleccionada.clienteNombre}</div>
-                  </div>
-                  <div className="detail-col">
-                    <label>Tipo de Servicio</label>
-                    <div className="detail-value">
-                      <i className={`fa-solid ${getTipoServicioIcon(solicitudSeleccionada.tipoServicio)}`}></i>
-                      {' '}{solicitudSeleccionada.tipoServicio}
-                    </div>
-                  </div>
-                  <div className="detail-col">
-                    <label>Empresa</label>
-                    <div className="detail-value">{solicitudSeleccionada.empresaCodigo}</div>
-                  </div>
+                <div className="detail-col">
+                  <label>Empresa</label>
+                  <div className="detail-value">{solicitudSeleccionada.empresaCodigo}</div>
                 </div>
               </div>
+            </div>
 
-              <div className="detail-section">
-                <h4><i className="fa-solid fa-map-location-dot"></i> Origen y Destino</h4>
-                <div className="origen-destino-detail">
-                  <div className="location-detail">
-                    <h5><i className="fa-solid fa-location-dot"></i> Origen</h5>
-                    <p><strong>País:</strong> {solicitudSeleccionada.origenPais}</p>
-                    <p><strong>Ciudad:</strong> {solicitudSeleccionada.origenCiudad}</p>
-                    {solicitudSeleccionada.origenDireccion && (
-                      <p><strong>Dirección:</strong> {solicitudSeleccionada.origenDireccion}</p>
-                    )}
-                    {solicitudSeleccionada.origenCp && (
-                      <p><strong>CP:</strong> {solicitudSeleccionada.origenCp}</p>
-                    )}
-                  </div>
-                  <div className="location-detail">
-                    <h5><i className="fa-solid fa-flag-checkered"></i> Destino</h5>
-                    <p><strong>País:</strong> {solicitudSeleccionada.destinoPais}</p>
-                    <p><strong>Ciudad:</strong> {solicitudSeleccionada.destinoCiudad}</p>
-                    {solicitudSeleccionada.destinoDireccion && (
-                      <p><strong>Dirección:</strong> {solicitudSeleccionada.destinoDireccion}</p>
-                    )}
-                    {solicitudSeleccionada.destinoCp && (
-                      <p><strong>CP:</strong> {solicitudSeleccionada.destinoCp}</p>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              <div className="detail-section">
-                <h4><i className="fa-solid fa-box"></i> Detalles del Embarque</h4>
-                <div className="detail-row">
-                  <div className="detail-col">
-                    <label>Cantidad</label>
-                    <div className="detail-value">{solicitudSeleccionada.cantidad}</div>
-                  </div>
-                  {solicitudSeleccionada.tipoEmpaque && (
-                    <div className="detail-col">
-                      <label>Tipo de Empaque</label>
-                      <div className="detail-value">{solicitudSeleccionada.tipoEmpaque}</div>
-                    </div>
+            {/* Origen y Destino */}
+            <div className="detail-section">
+              <h4><i className="fa-solid fa-map-location-dot"></i> Origen y Destino</h4>
+              <div className="origen-destino-detail">
+                <div className="location-detail">
+                  <h5><i className="fa-solid fa-location-dot"></i> Origen</h5>
+                  <p><strong>País:</strong> {solicitudSeleccionada.origenPais}</p>
+                  <p><strong>Ciudad:</strong> {solicitudSeleccionada.origenCiudad}</p>
+                  {solicitudSeleccionada.origenDireccion && (
+                    <p><strong>Dirección:</strong> {solicitudSeleccionada.origenDireccion}</p>
                   )}
-                  {solicitudSeleccionada.pesoKg && (
-                    <div className="detail-col">
-                      <label>Peso</label>
-                      <div className="detail-value">{solicitudSeleccionada.pesoKg} kg</div>
-                    </div>
+                  {solicitudSeleccionada.origenCp && (
+                    <p><strong>CP:</strong> {solicitudSeleccionada.origenCp}</p>
                   )}
                 </div>
+                <div className="location-detail">
+                  <h5><i className="fa-solid fa-flag-checkered"></i> Destino</h5>
+                  <p><strong>País:</strong> {solicitudSeleccionada.destinoPais}</p>
+                  <p><strong>Ciudad:</strong> {solicitudSeleccionada.destinoCiudad}</p>
+                  {solicitudSeleccionada.destinoDireccion && (
+                    <p><strong>Dirección:</strong> {solicitudSeleccionada.destinoDireccion}</p>
+                  )}
+                  {solicitudSeleccionada.destinoCp && (
+                    <p><strong>CP:</strong> {solicitudSeleccionada.destinoCp}</p>
+                  )}
+                </div>
+              </div>
+            </div>
 
-                {(solicitudSeleccionada.largoCm || solicitudSeleccionada.anchoCm || solicitudSeleccionada.altoCm) && (
-                  <div className="detail-row">
-                    <div className="detail-col">
-                      <label>Dimensiones (L × A × H)</label>
-                      <div className="detail-value">
-                        {solicitudSeleccionada.largoCm} × {solicitudSeleccionada.anchoCm} × {solicitudSeleccionada.altoCm} cm
-                      </div>
-                    </div>
+            {/* Detalles del Embarque */}
+            <div className="detail-section">
+              <h4><i className="fa-solid fa-box"></i> Detalles del Embarque</h4>
+              <div className="detail-row">
+                <div className="detail-col">
+                  <label>Cantidad</label>
+                  <div className="detail-value">{solicitudSeleccionada.cantidad}</div>
+                </div>
+                {solicitudSeleccionada.tipoEmpaque && (
+                  <div className="detail-col">
+                    <label>Tipo de Empaque</label>
+                    <div className="detail-value">{solicitudSeleccionada.tipoEmpaque}</div>
                   </div>
                 )}
-
-                {solicitudSeleccionada.valorDeclaradoUsd && (
-                  <div className="detail-row">
-                    <div className="detail-col">
-                      <label>Valor Declarado</label>
-                      <div className="detail-value">${solicitudSeleccionada.valorDeclaradoUsd} USD</div>
-                    </div>
+                {solicitudSeleccionada.pesoKg && (
+                  <div className="detail-col">
+                    <label>Peso</label>
+                    <div className="detail-value">{solicitudSeleccionada.pesoKg} kg</div>
                   </div>
                 )}
+              </div>
 
+              {(solicitudSeleccionada.largoCm || solicitudSeleccionada.anchoCm || solicitudSeleccionada.altoCm) && (
+                <div className="detail-row">
+                  <div className="detail-col">
+                    <label>Dimensiones (L × A × H)</label>
+                    <div className="detail-value">
+                      {solicitudSeleccionada.largoCm} × {solicitudSeleccionada.anchoCm} × {solicitudSeleccionada.altoCm} cm
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {solicitudSeleccionada.valorDeclaradoUsd && (
+                <div className="detail-row">
+                  <div className="detail-col">
+                    <label>Valor Declarado</label>
+                    <div className="detail-value">${solicitudSeleccionada.valorDeclaradoUsd} USD</div>
+                  </div>
+                </div>
+              )}
+
+              {/* Características especiales */}
+              {(solicitudSeleccionada.apilable || solicitudSeleccionada.materialPeligroso) && (
                 <div className="detail-row">
                   <div className="detail-col">
                     <label>Características</label>
                     <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
                       {solicitudSeleccionada.apilable && (
-                        <span className="badge badge-activo">
+                        <Badge type="activo">
                           <i className="fa-solid fa-layer-group"></i> Apilable
-                        </span>
+                        </Badge>
                       )}
                       {solicitudSeleccionada.materialPeligroso && (
-                        <span className="badge badge-cancelado">
+                        <Badge type="cancelado">
                           <i className="fa-solid fa-triangle-exclamation"></i> Material Peligroso
-                        </span>
+                        </Badge>
                       )}
                     </div>
                   </div>
                 </div>
-              </div>
-            </div>
-
-            <div className="modal-footer">
-              <button className="btn btn-secondary" onClick={cerrarModal}>
-                <i className="fa-solid fa-times"></i>
-                Cerrar
-              </button>
+              )}
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </Modal>
     </div>
   );
 }

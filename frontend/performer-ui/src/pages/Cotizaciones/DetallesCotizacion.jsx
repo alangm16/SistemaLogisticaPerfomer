@@ -1,10 +1,12 @@
-// src/pages/Cotizaciones/DetallesCotizacion.jsx
+// src/pages/Cotizaciones/DetallesCotizacion.jsx - VERSIÓN OPTIMIZADA
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { api } from '../../services/api';
 import Sidebar from '../../components/Sidebar';
 import Header from '../../components/Header';
 import Footer from '../../components/Footer';
+import Badge from '../../components/Badge';
+import FormField from '../../components/FormField';
 import Swal from 'sweetalert2';
 import '../../styles/dashboard.css';
 import '../../styles/cotizaciones.css';
@@ -16,14 +18,22 @@ export default function DetallesCotizacion() {
   const [cotizacion, setCotizacion] = useState(null);
   const [loading, setLoading] = useState(true);
   const [modoEdicion, setModoEdicion] = useState(false);
-  const [formData, setFormData] = useState({});
+  const [formData, setFormData] = useState({
+    origen: '',
+    destino: '',
+    tipoUnidad: '',
+    tiempoEstimado: '',
+    costo: 0,
+    validoHasta: '',
+    diasCredito: '',
+    margenGananciaPct: '',
+    estado: ''
+  });
 
   const rol = localStorage.getItem('rol');
   const nombre = localStorage.getItem('nombre');
 
-  useEffect(() => {
-    cargarCotizacion();
-  }, [id]);
+  useEffect(() => { cargarCotizacion(); }, [id]);
 
   const cargarCotizacion = async () => {
     try {
@@ -42,15 +52,15 @@ export default function DetallesCotizacion() {
 
       setCotizacion(cotizacionEncontrada);
       setFormData({
-        origen: cotizacionEncontrada.origen,
-        destino: cotizacionEncontrada.destino,
+        origen: cotizacionEncontrada.origen || '',
+        destino: cotizacionEncontrada.destino || '',
         tipoUnidad: cotizacionEncontrada.tipoUnidad || '',
         tiempoEstimado: cotizacionEncontrada.tiempoEstimado || '',
-        costo: cotizacionEncontrada.costo,
+        costo: cotizacionEncontrada.costo || 0,
         validoHasta: cotizacionEncontrada.validoHasta || '',
         diasCredito: cotizacionEncontrada.diasCredito || '',
         margenGananciaPct: cotizacionEncontrada.margenGananciaPct || '',
-        estado: cotizacionEncontrada.estado
+        estado: cotizacionEncontrada.estado || ''
       });
     } catch (err) {
       console.error(err);
@@ -65,8 +75,11 @@ export default function DetallesCotizacion() {
   };
 
   const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    const { name, value, type, checked } = e.target;
+    setFormData(prev => ({ 
+      ...prev, 
+      [name]: type === 'checkbox' ? checked : value 
+    }));
   };
 
   const guardarCambios = async () => {
@@ -84,15 +97,10 @@ export default function DetallesCotizacion() {
     try {
       const payload = {
         ...cotizacion,
-        origen: formData.origen,
-        destino: formData.destino,
-        tipoUnidad: formData.tipoUnidad,
-        tiempoEstimado: formData.tiempoEstimado,
+        ...formData,
         costo: parseFloat(formData.costo),
-        validoHasta: formData.validoHasta || null,
         diasCredito: formData.diasCredito ? parseInt(formData.diasCredito) : null,
         margenGananciaPct: formData.margenGananciaPct ? parseFloat(formData.margenGananciaPct) : null,
-        estado: formData.estado
       };
 
       await api.put(`/cotizaciones/${id}`, payload);
@@ -118,11 +126,7 @@ export default function DetallesCotizacion() {
 
   const cambiarEstado = async (nuevoEstado) => {
     try {
-      const payload = {
-        ...cotizacion,
-        estado: nuevoEstado
-      };
-      
+      const payload = { ...cotizacion, estado: nuevoEstado };
       await api.put(`/cotizaciones/${id}`, payload);
       await cargarCotizacion();
       
@@ -158,7 +162,6 @@ export default function DetallesCotizacion() {
 
     try {
       await api.delete(`/cotizaciones/${id}`);
-      
       Swal.fire({
         icon: 'success',
         title: 'Eliminado',
@@ -166,7 +169,6 @@ export default function DetallesCotizacion() {
         timer: 2000,
         showConfirmButton: false,
       });
-
       navigate('/cotizaciones');
     } catch (err) {
       console.error(err);
@@ -178,34 +180,44 @@ export default function DetallesCotizacion() {
     }
   };
 
-  const getEstadoBadgeClass = (estado) => {
-    switch (estado) {
-      case 'PENDIENTE': return 'badge-pendiente';
-      case 'ENVIADO': return 'badge-activo';
-      case 'COMPLETADO': return 'badge-vendedor';
-      case 'CANCELADO': return 'badge-inactivo';
-      default: return 'badge-default';
-    }
-  };
+  // Componentes reutilizables internos
+  const InfoCard = ({ title, icon, children }) => (
+    <div className="info-section-card">
+      <div className="info-section-header">
+        <div className="info-section-icon">
+          <i className={`fa-solid ${icon}`}></i>
+        </div>
+        <h3 className="info-section-title">{title}</h3>
+      </div>
+      <div className="info-section-body">{children}</div>
+    </div>
+  );
 
-  const getTipoTransporteBadgeClass = (tipo) => {
-    switch (tipo) {
-      case 'TERRESTRE': return 'badge-terrestre';
-      case 'MARITIMO': return 'badge-maritimo';
-      case 'AEREO': return 'badge-aereo';
-      default: return 'badge-default';
-    }
-  };
+  const InfoRow = ({ icon, label, value, highlight = false }) => (
+    <div className="info-row">
+      <span className="info-row-label">
+        <i className={`fa-solid ${icon}`}></i>
+        {label}
+      </span>
+      <span className={`info-row-value ${highlight ? 'highlight' : ''}`}>
+        {value}
+      </span>
+    </div>
+  );
 
-  const getEstadoIcon = (estado) => {
-    switch (estado) {
-      case 'PENDIENTE': return 'fa-hourglass-half';
-      case 'ENVIADO': return 'fa-paper-plane';
-      case 'COMPLETADO': return 'fa-check-circle';
-      case 'CANCELADO': return 'fa-times-circle';
-      default: return 'fa-circle';
-    }
-  };
+  const HeaderDetail = ({ label, value }) => (
+    <div className="header-detail-item">
+      <span className="header-detail-label">{label}</span>
+      <span className="header-detail-value">{value}</span>
+    </div>
+  );
+
+  const ActionButton = ({ onClick, icon, label, type = 'primary' }) => (
+    <button className={`btn btn-${type}`} onClick={onClick}>
+      <i className={`fa-solid ${icon}`}></i>
+      {label}
+    </button>
+  );
 
   if (loading) {
     return (
@@ -235,13 +247,12 @@ export default function DetallesCotizacion() {
 
         <div className="subheader">
           <div className="subheader-left">
-            <button 
-              className="btn-back"
+            <ActionButton
               onClick={() => navigate('/cotizaciones')}
-            >
-              <i className="fa-solid fa-arrow-left"></i>
-              Volver
-            </button>
+              icon="fa-arrow-left"
+              label="Volver"
+              type="secondary"
+            />
             <h2 className="page-title-subheader">Detalles de Cotización</h2>
           </div>
         </div>
@@ -255,31 +266,34 @@ export default function DetallesCotizacion() {
                 <p>Folio: {cotizacion.solicitud?.folioCodigo || 'N/A'}</p>
               </div>
               <div className="cotizacion-header-badges">
-                <span className={`badge ${getTipoTransporteBadgeClass(cotizacion.tipoTransporte)}`}>
+                <Badge type={cotizacion.tipoTransporte?.toLowerCase()}>
                   {cotizacion.tipoTransporte}
-                </span>
-                <span className={`badge ${getEstadoBadgeClass(cotizacion.estado)}`}>
-                  <i className={`fa-solid ${getEstadoIcon(cotizacion.estado)} me-2`}></i>
+                </Badge>
+                <Badge 
+                  type={cotizacion.estado?.toLowerCase()} 
+                  icon={cotizacion.estado === 'PENDIENTE' ? 'fa-hourglass-half' :
+                        cotizacion.estado === 'ENVIADO' ? 'fa-paper-plane' :
+                        cotizacion.estado === 'COMPLETADO' ? 'fa-check-circle' : 'fa-times-circle'}
+                >
                   {cotizacion.estado}
-                </span>
+                </Badge>
               </div>
             </div>
 
             <div className="cotizacion-header-details">
-              <div className="header-detail-item">
-                <span className="header-detail-label">Costo</span>
-                <span className="header-detail-value">${cotizacion.costo?.toLocaleString('es-MX')}</span>
-              </div>
-              <div className="header-detail-item">
-                <span className="header-detail-label">Tiempo Estimado</span>
-                <span className="header-detail-value">{cotizacion.tiempoEstimado || 'N/A'}</span>
-              </div>
-              <div className="header-detail-item">
-                <span className="header-detail-label">Válido Hasta</span>
-                <span className="header-detail-value">
-                  {cotizacion.validoHasta ? new Date(cotizacion.validoHasta).toLocaleDateString('es-MX') : 'N/A'}
-                </span>
-              </div>
+              <HeaderDetail 
+                label="Costo" 
+                value={`$${cotizacion.costo?.toLocaleString('es-MX') || '0'}`} 
+              />
+              <HeaderDetail 
+                label="Tiempo Estimado" 
+                value={cotizacion.tiempoEstimado || 'N/A'} 
+              />
+              <HeaderDetail 
+                label="Válido Hasta" 
+                value={cotizacion.validoHasta ? 
+                  new Date(cotizacion.validoHasta).toLocaleDateString('es-MX') : 'N/A'} 
+              />
             </div>
           </div>
 
@@ -288,246 +302,75 @@ export default function DetallesCotizacion() {
             {/* Columna principal */}
             <div className="detalles-main">
               {/* Información de la solicitud */}
-              <div className="info-section-card">
-                <div className="info-section-header">
-                  <div className="info-section-icon">
-                    <i className="fa-solid fa-file-alt"></i>
-                  </div>
-                  <h3 className="info-section-title">Información de Solicitud</h3>
-                </div>
-                <div className="info-section-body">
-                  <div className="info-row">
-                    <span className="info-row-label">
-                      <i className="fa-solid fa-building"></i>
-                      Cliente
-                    </span>
-                    <span className="info-row-value">{cotizacion.solicitud?.cliente?.nombre || 'N/A'}</span>
-                  </div>
-                  <div className="info-row">
-                    <span className="info-row-label">
-                      <i className="fa-solid fa-barcode"></i>
-                      Folio
-                    </span>
-                    <span className="info-row-value">{cotizacion.solicitud?.folioCodigo || 'N/A'}</span>
-                  </div>
-                  <div className="info-row">
-                    <span className="info-row-label">
-                      <i className="fa-solid fa-calendar"></i>
-                      Fecha de Emisión
-                    </span>
-                    <span className="info-row-value">
-                      {cotizacion.solicitud?.fechaEmision ? 
-                        new Date(cotizacion.solicitud.fechaEmision).toLocaleDateString('es-MX') : 'N/A'}
-                    </span>
-                  </div>
-                </div>
-              </div>
+              <InfoCard title="Información de Solicitud" icon="fa-file-alt">
+                <InfoRow icon="fa-building" label="Cliente" 
+                  value={cotizacion.solicitud?.cliente?.nombre || 'N/A'} />
+                <InfoRow icon="fa-barcode" label="Folio" 
+                  value={cotizacion.solicitud?.folioCodigo || 'N/A'} />
+                <InfoRow icon="fa-calendar" label="Fecha de Emisión" 
+                  value={cotizacion.solicitud?.fechaEmision ? 
+                    new Date(cotizacion.solicitud.fechaEmision).toLocaleDateString('es-MX') : 'N/A'} />
+              </InfoCard>
 
               {/* Información del transporte */}
-              {!modoEdicion ? (
-                <div className="info-section-card">
-                  <div className="info-section-header">
-                    <div className="info-section-icon">
-                      <i className="fa-solid fa-route"></i>
-                    </div>
-                    <h3 className="info-section-title">Detalles de Transporte</h3>
-                  </div>
-                  <div className="info-section-body">
-                    <div className="info-row">
-                      <span className="info-row-label">
-                        <i className="fa-solid fa-map-marker-alt"></i>
-                        Origen
-                      </span>
-                      <span className="info-row-value">{cotizacion.origen}</span>
-                    </div>
-                    <div className="info-row">
-                      <span className="info-row-label">
-                        <i className="fa-solid fa-flag-checkered"></i>
-                        Destino
-                      </span>
-                      <span className="info-row-value">{cotizacion.destino}</span>
-                    </div>
-                    <div className="info-row">
-                      <span className="info-row-label">
-                        <i className="fa-solid fa-truck"></i>
-                        Tipo de Unidad
-                      </span>
-                      <span className="info-row-value">{cotizacion.tipoUnidad || 'No especificado'}</span>
-                    </div>
-                    <div className="info-row">
-                      <span className="info-row-label">
-                        <i className="fa-solid fa-clock"></i>
-                        Tiempo Estimado
-                      </span>
-                      <span className="info-row-value">{cotizacion.tiempoEstimado || 'No especificado'}</span>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="info-section-card">
-                  <div className="info-section-header">
-                    <div className="info-section-icon">
-                      <i className="fa-solid fa-edit"></i>
-                    </div>
-                    <h3 className="info-section-title">Editar Transporte</h3>
-                  </div>
+              <InfoCard 
+                title={modoEdicion ? "Editar Transporte" : "Detalles de Transporte"} 
+                icon={modoEdicion ? "fa-edit" : "fa-route"}
+              >
+                {!modoEdicion ? (
+                  <>
+                    <InfoRow icon="fa-map-marker-alt" label="Origen" value={cotizacion.origen} />
+                    <InfoRow icon="fa-flag-checkered" label="Destino" value={cotizacion.destino} />
+                    <InfoRow icon="fa-truck" label="Tipo de Unidad" 
+                      value={cotizacion.tipoUnidad || 'No especificado'} />
+                    <InfoRow icon="fa-clock" label="Tiempo Estimado" 
+                      value={cotizacion.tiempoEstimado || 'No especificado'} />
+                  </>
+                ) : (
                   <div className="form-grid">
-                    <div className="form-section">
-                      <label>Origen *</label>
-                      <input 
-                        type="text" 
-                        name="origen"
-                        value={formData.origen}
-                        onChange={handleInputChange}
-                        className="select-input"
-                      />
-                    </div>
-                    <div className="form-section">
-                      <label>Destino *</label>
-                      <input 
-                        type="text" 
-                        name="destino"
-                        value={formData.destino}
-                        onChange={handleInputChange}
-                        className="select-input"
-                      />
-                    </div>
-                    <div className="form-section">
-                      <label>Tipo de Unidad</label>
-                      <input 
-                        type="text" 
-                        name="tipoUnidad"
-                        value={formData.tipoUnidad}
-                        onChange={handleInputChange}
-                        className="select-input"
-                      />
-                    </div>
-                    <div className="form-section">
-                      <label>Tiempo Estimado</label>
-                      <input 
-                        type="text" 
-                        name="tiempoEstimado"
-                        value={formData.tiempoEstimado}
-                        onChange={handleInputChange}
-                        className="select-input"
-                      />
-                    </div>
-                    <div className="form-section">
-                      <label>Costo (USD) *</label>
-                      <input 
-                        type="number" 
-                        name="costo"
-                        value={formData.costo}
-                        onChange={handleInputChange}
-                        className="select-input"
-                        step="0.01"
-                      />
-                    </div>
-                    <div className="form-section">
-                      <label>Válido Hasta</label>
-                      <input 
-                        type="date" 
-                        name="validoHasta"
-                        value={formData.validoHasta}
-                        onChange={handleInputChange}
-                        className="select-input"
-                      />
-                    </div>
-                    <div className="form-section">
-                      <label>Días de Crédito</label>
-                      <input 
-                        type="number" 
-                        name="diasCredito"
-                        value={formData.diasCredito}
-                        onChange={handleInputChange}
-                        className="select-input"
-                      />
-                    </div>
-                    <div className="form-section">
-                      <label>Margen de Ganancia (%)</label>
-                      <input 
-                        type="number" 
-                        name="margenGananciaPct"
-                        value={formData.margenGananciaPct}
-                        onChange={handleInputChange}
-                        className="select-input"
-                        step="0.01"
-                      />
-                    </div>
+                    <FormField label="Origen *" name="origen" value={formData.origen} 
+                      onChange={handleInputChange} placeholder="Ingrese origen" />
+                    <FormField label="Destino *" name="destino" value={formData.destino} 
+                      onChange={handleInputChange} placeholder="Ingrese destino" />
+                    <FormField label="Tipo de Unidad" name="tipoUnidad" value={formData.tipoUnidad} 
+                      onChange={handleInputChange} placeholder="Ej: Torton, 53ft" />
+                    <FormField label="Tiempo Estimado" name="tiempoEstimado" value={formData.tiempoEstimado} 
+                      onChange={handleInputChange} placeholder="Ej: 3-5 días" />
+                    <FormField label="Costo (USD) *" name="costo" type="number" value={formData.costo} 
+                      onChange={handleInputChange} step="0.01" />
+                    <FormField label="Válido Hasta" name="validoHasta" type="date" value={formData.validoHasta} 
+                      onChange={handleInputChange} />
+                    <FormField label="Días de Crédito" name="diasCredito" type="number" 
+                      value={formData.diasCredito} onChange={handleInputChange} />
+                    <FormField label="Margen de Ganancia (%)" name="margenGananciaPct" type="number" 
+                      value={formData.margenGananciaPct} onChange={handleInputChange} step="0.01" />
                   </div>
-                </div>
-              )}
+                )}
+              </InfoCard>
             </div>
 
             {/* Sidebar derecha */}
             <div className="detalles-sidebar">
               {/* Información del proveedor */}
-              <div className="info-section-card">
-                <div className="info-section-header">
-                  <div className="info-section-icon">
-                    <i className="fa-solid fa-truck"></i>
-                  </div>
-                  <h3 className="info-section-title">Proveedor</h3>
-                </div>
-                <div className="info-section-body">
-                  <div className="info-row">
-                    <span className="info-row-label">
-                      <i className="fa-solid fa-building"></i>
-                      Nombre
-                    </span>
-                    <span className="info-row-value">{cotizacion.proveedor?.nombre || 'N/A'}</span>
-                  </div>
-                  <div className="info-row">
-                    <span className="info-row-label">
-                      <i className="fa-solid fa-envelope"></i>
-                      Email
-                    </span>
-                    <span className="info-row-value">{cotizacion.proveedor?.email || 'N/A'}</span>
-                  </div>
-                  <div className="info-row">
-                    <span className="info-row-label">
-                      <i className="fa-solid fa-phone"></i>
-                      Teléfono
-                    </span>
-                    <span className="info-row-value">{cotizacion.proveedor?.telefono || 'N/A'}</span>
-                  </div>
-                </div>
-              </div>
+              <InfoCard title="Proveedor" icon="fa-truck">
+                <InfoRow icon="fa-building" label="Nombre" 
+                  value={cotizacion.proveedor?.nombre || 'N/A'} />
+                <InfoRow icon="fa-envelope" label="Email" 
+                  value={cotizacion.proveedor?.email || 'N/A'} />
+                <InfoRow icon="fa-phone" label="Teléfono" 
+                  value={cotizacion.proveedor?.telefono || 'N/A'} />
+              </InfoCard>
 
               {/* Información financiera */}
-              <div className="info-section-card">
-                <div className="info-section-header">
-                  <div className="info-section-icon">
-                    <i className="fa-solid fa-dollar-sign"></i>
-                  </div>
-                  <h3 className="info-section-title">Información Financiera</h3>
-                </div>
-                <div className="info-section-body">
-                  <div className="info-row">
-                    <span className="info-row-label">
-                      <i className="fa-solid fa-money-bill-wave"></i>
-                      Costo
-                    </span>
-                    <span className="info-row-value highlight">${cotizacion.costo?.toLocaleString('es-MX')}</span>
-                  </div>
-                  <div className="info-row">
-                    <span className="info-row-label">
-                      <i className="fa-solid fa-percent"></i>
-                      Margen
-                    </span>
-                    <span className="info-row-value">
-                      {cotizacion.margenGananciaPct ? `${cotizacion.margenGananciaPct}%` : 'N/A'}
-                    </span>
-                  </div>
-                  <div className="info-row">
-                    <span className="info-row-label">
-                      <i className="fa-solid fa-credit-card"></i>
-                      Días de Crédito
-                    </span>
-                    <span className="info-row-value">{cotizacion.diasCredito || 0} días</span>
-                  </div>
-                </div>
-              </div>
+              <InfoCard title="Información Financiera" icon="fa-dollar-sign">
+                <InfoRow icon="fa-money-bill-wave" label="Costo" 
+                  value={`$${cotizacion.costo?.toLocaleString('es-MX') || '0'}`} 
+                  highlight={true} />
+                <InfoRow icon="fa-percent" label="Margen" 
+                  value={cotizacion.margenGananciaPct ? `${cotizacion.margenGananciaPct}%` : 'N/A'} />
+                <InfoRow icon="fa-credit-card" label="Días de Crédito" 
+                  value={`${cotizacion.diasCredito || 0} días`} />
+              </InfoCard>
             </div>
           </div>
 
@@ -535,46 +378,40 @@ export default function DetallesCotizacion() {
           <div className="detalles-actions">
             {!modoEdicion ? (
               <>
-                <button 
-                  className="btn btn-primary"
-                  onClick={() => setModoEdicion(true)}
-                >
-                  <i className="fa-solid fa-edit"></i>
-                  Editar
-                </button>
-
+                <ActionButton 
+                  onClick={() => setModoEdicion(true)} 
+                  icon="fa-edit" 
+                  label="Editar" 
+                />
+                
                 {cotizacion.estado === 'PENDIENTE' && (
-                  <button 
-                    className="btn btn-secondary"
-                    onClick={() => cambiarEstado('ENVIADO')}
-                  >
-                    <i className="fa-solid fa-paper-plane"></i>
-                    Marcar como Enviado
-                  </button>
+                  <ActionButton 
+                    onClick={() => cambiarEstado('ENVIADO')} 
+                    icon="fa-paper-plane" 
+                    label="Marcar como Enviado" 
+                    type="secondary"
+                  />
                 )}
 
                 {cotizacion.estado === 'ENVIADO' && (
-                  <button 
-                    className="btn btn-secondary"
-                    onClick={() => cambiarEstado('COMPLETADO')}
-                  >
-                    <i className="fa-solid fa-check"></i>
-                    Marcar como Completado
-                  </button>
+                  <ActionButton 
+                    onClick={() => cambiarEstado('COMPLETADO')} 
+                    icon="fa-check" 
+                    label="Marcar como Completado" 
+                    type="secondary"
+                  />
                 )}
 
-                <button 
-                  className="btn btn-danger"
-                  onClick={eliminar}
-                >
-                  <i className="fa-solid fa-trash"></i>
-                  Eliminar
-                </button>
+                <ActionButton 
+                  onClick={eliminar} 
+                  icon="fa-trash" 
+                  label="Eliminar" 
+                  type="danger"
+                />
               </>
             ) : (
               <>
-                <button 
-                  className="btn btn-secondary"
+                <ActionButton 
                   onClick={() => {
                     setModoEdicion(false);
                     setFormData({
@@ -588,18 +425,16 @@ export default function DetallesCotizacion() {
                       margenGananciaPct: cotizacion.margenGananciaPct || '',
                       estado: cotizacion.estado
                     });
-                  }}
-                >
-                  <i className="fa-solid fa-times"></i>
-                  Cancelar
-                </button>
-                <button 
-                  className="btn btn-primary"
-                  onClick={guardarCambios}
-                >
-                  <i className="fa-solid fa-save"></i>
-                  Guardar Cambios
-                </button>
+                  }} 
+                  icon="fa-times" 
+                  label="Cancelar" 
+                  type="secondary"
+                />
+                <ActionButton 
+                  onClick={guardarCambios} 
+                  icon="fa-save" 
+                  label="Guardar Cambios" 
+                />
               </>
             )}
           </div>

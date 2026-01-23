@@ -1,4 +1,4 @@
-// src/pages/solicitudes/NuevaSolicitud.jsx
+// src/pages/solicitudes/NuevaSolicitud.jsx - VERSIÓN OPTIMIZADA
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../../services/api';
@@ -6,7 +6,10 @@ import Sidebar from '../../components/Sidebar';
 import Header from '../../components/Header';
 import Subheader from '../../components/Subheader';
 import Footer from '../../components/Footer';
+import FormField from '../../components/FormField';
+import Badge from '../../components/Badge';
 import Swal from 'sweetalert2';
+import useForm from '../../hooks/useForm';
 import '../../styles/dashboard.css';
 import '../../styles/solicitudes.css';
 import '../../styles/generales.css';
@@ -38,15 +41,16 @@ export default function NuevaSolicitud() {
   ];
 
   const tiposEmpaque = [
-    'Palet',
-    'Caja',
-    'Contenedor',
-    'Bolsa',
-    'Tambor',
-    'Otro'
+    { valor: 'Palet', label: 'Palet' },
+    { valor: 'Caja', label: 'Caja' },
+    { valor: 'Contenedor', label: 'Contenedor' },
+    { valor: 'Bolsa', label: 'Bolsa' },
+    { valor: 'Tambor', label: 'Tambor' },
+    { valor: 'Otro', label: 'Otro' }
   ];
 
-  const [formData, setFormData] = useState({
+  // Usar hook useForm para manejo del formulario
+  const { values: formData, handleChange, setFieldValue } = useForm({
     empresaCodigo: '',
     clienteId: '',
     tipoServicio: '',
@@ -90,16 +94,8 @@ export default function NuevaSolicitud() {
     }
   };
 
-  const handleInputChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : value
-    }));
-  };
-
   const seleccionarEmpresa = (codigo) => {
-    setFormData(prev => ({ ...prev, empresaCodigo: codigo }));
+    setFieldValue('empresaCodigo', codigo);
   };
 
   const validarPaso = () => {
@@ -208,8 +204,6 @@ export default function NuevaSolicitud() {
         materialPeligroso: formData.materialPeligroso,
       };
 
-      console.log('Enviando solicitud:', solicitudData);
-
       await api.post('/solicitudes', solicitudData);
 
       await Swal.fire({
@@ -263,63 +257,55 @@ export default function NuevaSolicitud() {
         Complete los datos básicos de la solicitud
       </p>
 
-      <div className="form-section">
-        <label className="required-field">Folio</label>
-        <input
-          type="text"
-          value={`${formData.empresaCodigo}-XXXXX-${new Date().getFullYear()}`}
-          disabled
-          className="form-input"
-          placeholder="Se generará automáticamente"
-        />
-      </div>
+      <FormField
+        label="Folio"
+        value={`${formData.empresaCodigo || '---'}-XXXXX-${new Date().getFullYear()}`}
+        disabled={true}
+        placeholder="Se generará automáticamente"
+      />
 
       <div className="form-grid-2">
-        <div className="form-section">
-          <label className="required-field">Cliente</label>
-          <select
-            name="clienteId"
-            value={formData.clienteId}
-            onChange={handleInputChange}
-            className="form-select"
-          >
-            <option value="">-- Seleccione un cliente --</option>
-            {clientes.map(cliente => (
-              <option key={cliente.id} value={cliente.id}>
-                {cliente.nombre}
-              </option>
-            ))}
-          </select>
-        </div>
+        <FormField
+          type="select"
+          label="Cliente"
+          name="clienteId"
+          value={formData.clienteId}
+          onChange={handleChange}
+          required={true}
+          options={[
+            { value: '', label: '-- Seleccione un cliente --' },
+            ...clientes.map(cliente => ({
+              value: cliente.id,
+              label: cliente.nombre
+            }))
+          ]}
+        />
 
-        <div className="form-section">
-          <label className="required-field">Tipo de Servicio</label>
-          <select
-            name="tipoServicio"
-            value={formData.tipoServicio}
-            onChange={handleInputChange}
-            className="form-select"
-          >
-            <option value="">-- Seleccione tipo de servicio --</option>
-            {tiposServicio.map(tipo => (
-              <option key={tipo.valor} value={tipo.valor}>
-                {tipo.label}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      <div className="form-section">
-        <label className="required-field">Fecha de Emisión</label>
-        <input
-          type="date"
-          name="fechaEmision"
-          value={formData.fechaEmision}
-          onChange={handleInputChange}
-          className="form-input"
+        <FormField
+          type="select"
+          label="Tipo de Servicio"
+          name="tipoServicio"
+          value={formData.tipoServicio}
+          onChange={handleChange}
+          required={true}
+          options={[
+            { value: '', label: '-- Seleccione tipo de servicio --' },
+            ...tiposServicio.map(tipo => ({
+              value: tipo.valor,
+              label: tipo.label
+            }))
+          ]}
         />
       </div>
+
+      <FormField
+        type="date"
+        label="Fecha de Emisión"
+        name="fechaEmision"
+        value={formData.fechaEmision}
+        onChange={handleChange}
+        required={true}
+      />
     </div>
   );
 
@@ -337,52 +323,40 @@ export default function NuevaSolicitud() {
             <i className="fa-solid fa-location-dot"></i> ORIGEN
           </h3>
 
-          <div className="form-section">
-            <label className="required-field">País</label>
-            <input
-              type="text"
-              name="origenPais"
-              value={formData.origenPais}
-              onChange={handleInputChange}
-              className="form-input"
-              placeholder="Ej: México"
-            />
-          </div>
+          <FormField
+            label="País"
+            name="origenPais"
+            value={formData.origenPais}
+            onChange={handleChange}
+            placeholder="Ej: México"
+            required={true}
+          />
 
-          <div className="form-section">
-            <label className="required-field">Ciudad</label>
-            <input
-              type="text"
-              name="origenCiudad"
-              value={formData.origenCiudad}
-              onChange={handleInputChange}
-              className="form-input"
-              placeholder="Ej: Torreón"
-            />
-          </div>
+          <FormField
+            label="Ciudad"
+            name="origenCiudad"
+            value={formData.origenCiudad}
+            onChange={handleChange}
+            placeholder="Ej: Torreón"
+            required={true}
+          />
 
-          <div className="form-section">
-            <label>Dirección</label>
-            <textarea
-              name="origenDireccion"
-              value={formData.origenDireccion}
-              onChange={handleInputChange}
-              className="form-textarea"
-              placeholder="Dirección completa (opcional)"
-            />
-          </div>
+          <FormField
+            type="textarea"
+            label="Dirección"
+            name="origenDireccion"
+            value={formData.origenDireccion}
+            onChange={handleChange}
+            placeholder="Dirección completa (opcional)"
+          />
 
-          <div className="form-section">
-            <label>Código Postal</label>
-            <input
-              type="text"
-              name="origenCp"
-              value={formData.origenCp}
-              onChange={handleInputChange}
-              className="form-input"
-              placeholder="Ej: 27000"
-            />
-          </div>
+          <FormField
+            label="Código Postal"
+            name="origenCp"
+            value={formData.origenCp}
+            onChange={handleChange}
+            placeholder="Ej: 27000"
+          />
         </div>
 
         {/* DESTINO */}
@@ -391,52 +365,40 @@ export default function NuevaSolicitud() {
             <i className="fa-solid fa-flag-checkered"></i> DESTINO
           </h3>
 
-          <div className="form-section">
-            <label className="required-field">País</label>
-            <input
-              type="text"
-              name="destinoPais"
-              value={formData.destinoPais}
-              onChange={handleInputChange}
-              className="form-input"
-              placeholder="Ej: Estados Unidos"
-            />
-          </div>
+          <FormField
+            label="País"
+            name="destinoPais"
+            value={formData.destinoPais}
+            onChange={handleChange}
+            placeholder="Ej: Estados Unidos"
+            required={true}
+          />
 
-          <div className="form-section">
-            <label className="required-field">Ciudad</label>
-            <input
-              type="text"
-              name="destinoCiudad"
-              value={formData.destinoCiudad}
-              onChange={handleInputChange}
-              className="form-input"
-              placeholder="Ej: Houston"
-            />
-          </div>
+          <FormField
+            label="Ciudad"
+            name="destinoCiudad"
+            value={formData.destinoCiudad}
+            onChange={handleChange}
+            placeholder="Ej: Houston"
+            required={true}
+          />
 
-          <div className="form-section">
-            <label>Dirección</label>
-            <textarea
-              name="destinoDireccion"
-              value={formData.destinoDireccion}
-              onChange={handleInputChange}
-              className="form-textarea"
-              placeholder="Dirección completa (opcional)"
-            />
-          </div>
+          <FormField
+            type="textarea"
+            label="Dirección"
+            name="destinoDireccion"
+            value={formData.destinoDireccion}
+            onChange={handleChange}
+            placeholder="Dirección completa (opcional)"
+          />
 
-          <div className="form-section">
-            <label>Código Postal</label>
-            <input
-              type="text"
-              name="destinoCp"
-              value={formData.destinoCp}
-              onChange={handleInputChange}
-              className="form-input"
-              placeholder="Ej: 77001"
-            />
-          </div>
+          <FormField
+            label="Código Postal"
+            name="destinoCp"
+            value={formData.destinoCp}
+            onChange={handleChange}
+            placeholder="Ej: 77001"
+          />
         </div>
       </div>
     </div>
@@ -449,63 +411,58 @@ export default function NuevaSolicitud() {
         Especifique las características de la carga
       </p>
 
-      <div className="form-grid">
-        <div className="form-section">
-          <label className="required-field">Cantidad</label>
-          <input
-            type="number"
-            name="cantidad"
-            value={formData.cantidad}
-            onChange={handleInputChange}
-            className="form-input"
-            min="1"
-            placeholder="1"
-          />
-        </div>
+      <div className="form-grid-2">
+        <FormField
+          type="number"
+          label="Cantidad"
+          name="cantidad"
+          value={formData.cantidad}
+          onChange={handleChange}
+          required={true}
+          min="1"
+          placeholder="1"
+        />
 
-        <div className="form-section">
-          <label>Tipo de Empaque</label>
-          <select
-            name="tipoEmpaque"
-            value={formData.tipoEmpaque}
-            onChange={handleInputChange}
-            className="form-select"
-          >
-            <option value="">-- Seleccione --</option>
-            {tiposEmpaque.map(tipo => (
-              <option key={tipo} value={tipo}>{tipo}</option>
-            ))}
-          </select>
-        </div>
+        <FormField
+          type="select"
+          label="Tipo de Empaque"
+          name="tipoEmpaque"
+          value={formData.tipoEmpaque}
+          onChange={handleChange}
+          options={[
+            { value: '', label: '-- Seleccione --' },
+            ...tiposEmpaque
+          ]}
+        />
       </div>
 
       <div className="form-section">
-        <label>Dimensiones (largo × ancho × alto) en centímetros</label>
+        <label className="required-field">Dimensiones (largo × ancho × alto) en centímetros</label>
         <div className="form-grid">
-          <input
+          <FormField
             type="number"
+            label=""
             name="largoCm"
             value={formData.largoCm}
-            onChange={handleInputChange}
-            className="form-input"
+            onChange={handleChange}
             placeholder="Largo (cm)"
             step="0.01"
           />
-          <input
+          <FormField
             type="number"
+            label=""
             name="anchoCm"
             value={formData.anchoCm}
-            onChange={handleInputChange}
-            className="form-input"
+            onChange={handleChange}
             placeholder="Ancho (cm)"
             step="0.01"
           />
-          <input
+          <FormField
             type="number"
+            label=""
             name="altoCm"
             value={formData.altoCm}
-            onChange={handleInputChange}
-            className="form-input"
+            onChange={handleChange}
             placeholder="Alto (cm)"
             step="0.01"
           />
@@ -513,65 +470,53 @@ export default function NuevaSolicitud() {
       </div>
 
       <div className="form-grid-2">
-        <div className="form-section">
-          <label>Peso (kg)</label>
-          <input
-            type="number"
-            name="pesoKg"
-            value={formData.pesoKg}
-            onChange={handleInputChange}
-            className="form-input"
-            placeholder="Peso en kilogramos"
-            step="0.01"
-          />
-        </div>
+        <FormField
+          type="number"
+          label="Peso (kg)"
+          name="pesoKg"
+          value={formData.pesoKg}
+          onChange={handleChange}
+          placeholder="Peso en kilogramos"
+          step="0.01"
+        />
 
-        <div className="form-section">
-          <label>Valor Declarado (USD)</label>
-          <input
-            type="number"
-            name="valorDeclaradoUsd"
-            value={formData.valorDeclaradoUsd}
-            onChange={handleInputChange}
-            className="form-input"
-            placeholder="Valor en dólares"
-            step="0.01"
-          />
-        </div>
+        <FormField
+          type="number"
+          label="Valor Declarado (USD)"
+          name="valorDeclaradoUsd"
+          value={formData.valorDeclaradoUsd}
+          onChange={handleChange}
+          placeholder="Valor en dólares"
+          step="0.01"
+        />
       </div>
 
       <div className="form-grid-2">
-        <div className="form-section">
-          <div className="checkbox-group">
-            <input
-              type="checkbox"
-              id="apilable"
-              name="apilable"
-              checked={formData.apilable}
-              onChange={handleInputChange}
-              className="checkbox-input"
-            />
-            <label htmlFor="apilable" className="checkbox-label-text">
-              <i className="fa-solid fa-layer-group"></i> ¿Es apilable?
-            </label>
-          </div>
-        </div>
+        <FormField
+          type="checkbox"
+          label={
+            <span className="checkbox-with-icon">
+              <i className="fa-solid fa-layer-group"></i>
+              <span>¿Es apilable?</span>
+            </span>
+          }
+          name="apilable"
+          value={formData.apilable}
+          onChange={handleChange}
+        />
 
-        <div className="form-section">
-          <div className="checkbox-group">
-            <input
-              type="checkbox"
-              id="materialPeligroso"
-              name="materialPeligroso"
-              checked={formData.materialPeligroso}
-              onChange={handleInputChange}
-              className="checkbox-input"
-            />
-            <label htmlFor="materialPeligroso" className="checkbox-label-text">
-              <i className="fa-solid fa-triangle-exclamation"></i> ¿Material peligroso?
-            </label>
-          </div>
-        </div>
+        <FormField
+          type="checkbox"
+          label={
+            <span className="checkbox-with-icon">
+              <i className="fa-solid fa-triangle-exclamation"></i>
+              <span>¿Material peligroso?</span>
+            </span>
+          }
+          name="materialPeligroso"
+          value={formData.materialPeligroso}
+          onChange={handleChange}
+        />
       </div>
     </div>
   );
@@ -616,13 +561,20 @@ export default function NuevaSolicitud() {
             <div className="info-item">
               <i className="fa-solid fa-clipboard-list"></i>
               <span>Paso:</span>
-              <span className="info-value">{pasoActual} de 4</span>
+              <span className="info-value">
+                {pasoActual} de 4
+                <Badge type={pasoActual === 4 ? 'completado' : 'pendiente'} style={{ marginLeft: '10px' }}>
+                  {pasoActual === 4 ? 'Listo' : 'En progreso'}
+                </Badge>
+              </span>
             </div>
             <div className="info-item">
               <i className="fa-solid fa-building"></i>
               <span>Empresa:</span>
               <span className="info-value">
-                {formData.empresaCodigo || 'No seleccionada'}
+                {formData.empresaCodigo 
+                  ? empresas.find(e => e.codigo === formData.empresaCodigo)?.nombre
+                  : 'No seleccionada'}
               </span>
             </div>
             <div className="info-item">

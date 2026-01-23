@@ -1,11 +1,17 @@
 // src/pages/solicitudes/Solicitudes.jsx
-import { useEffect, useState } from 'react';
-/* import { useNavigate } from 'react-router-dom'; */
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { api } from '../../services/api';
 import Sidebar from '../../components/Sidebar';
 import Header from '../../components/Header';
 import Subheader from '../../components/Subheader';
 import Footer from '../../components/Footer';
+import DataTable from '../../components/DataTable';
+import DropdownActions from '../../components/DropdownActions';
+import Modal from '../../components/Modal';
+import FormField from '../../components/FormField';
+import StatsGrid from '../../components/StatsGrid';
+import Badge from '../../components/Badge';
+import useForm from '../../hooks/useForm';
 import Swal from 'sweetalert2';
 import authHeader from '../../services/authHeader';
 import '../../styles/dashboard.css';
@@ -13,9 +19,7 @@ import '../../styles/solicitudes.css';
 import '../../styles/generales.css';
 
 export default function Solicitudes() {
-  /* const navigate = useNavigate(); */
   const [solicitudes, setSolicitudes] = useState([]);
-  const [solicitudesFiltradas, setSolicitudesFiltradas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [filtro, setFiltro] = useState('TODAS');
@@ -25,20 +29,20 @@ export default function Solicitudes() {
   const [modalAsignar, setModalAsignar] = useState(false);
   const [solicitudSeleccionada, setSolicitudSeleccionada] = useState(null);
   const [empleados, setEmpleados] = useState([]);
-  const [empleadoSeleccionado, setEmpleadoSeleccionado] = useState('');
   
   const rol = localStorage.getItem('rol');
   const nombre = localStorage.getItem('nombre');
+
+  // Hook personalizado para el formulario de asignación
+  const { values: formAsignacion, handleChange: handleAsignacionChange, resetForm: resetAsignacion } = useForm({
+    empleadoId: ''
+  });
 
   useEffect(() => {
     cargarDatos();
   }, []);
 
-  useEffect(() => {
-    filtrarSolicitudes();
-  }, [solicitudes, filtro, filtroFecha, busqueda]);
-
-  const cargarDatos = async () => {
+  const cargarDatos = useCallback(async () => {
     try {
       const [resSolicitudes, resEmpleados] = await Promise.all([
         api.get('/solicitudes', { headers: authHeader() }),
@@ -53,9 +57,10 @@ export default function Solicitudes() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const filtrarSolicitudes = () => {
+  // Filtrado memoizado para mejor rendimiento
+  const solicitudesFiltradas = useMemo(() => {
     let resultado = [...solicitudes];
 
     // Filtrar por estado
@@ -96,10 +101,8 @@ export default function Solicitudes() {
     }
 
     // Ordenar por fecha de creación descendente
-    resultado.sort((a, b) => new Date(b.creadoEn) - new Date(a.creadoEn));
-
-    setSolicitudesFiltradas(resultado);
-  };
+    return resultado.sort((a, b) => new Date(b.creadoEn) - new Date(a.creadoEn));
+  }, [solicitudes, filtro, filtroFecha, busqueda]);
 
   const abrirDetalle = async (solicitud) => {
     try {
@@ -118,7 +121,7 @@ export default function Solicitudes() {
 
   const abrirModalAsignar = (solicitud) => {
     setSolicitudSeleccionada(solicitud);
-    setEmpleadoSeleccionado('');
+    resetAsignacion({ empleadoId: '' });
     setModalAsignar(true);
   };
 
@@ -126,11 +129,11 @@ export default function Solicitudes() {
     setModalDetalle(false);
     setModalAsignar(false);
     setSolicitudSeleccionada(null);
-    setEmpleadoSeleccionado('');
+    resetAsignacion();
   };
 
   const asignarSolicitud = async () => {
-    if (!empleadoSeleccionado) {
+    if (!formAsignacion.empleadoId) {
       Swal.fire({
         icon: 'warning',
         title: 'Seleccione un empleado',
@@ -141,7 +144,7 @@ export default function Solicitudes() {
 
     try {
       await api.put(`/solicitudes/${solicitudSeleccionada.id}/asignar`, null, {
-        params: { empleadoId: empleadoSeleccionado }
+        params: { empleadoId: formAsignacion.empleadoId }
       });
 
       await Swal.fire({
@@ -181,7 +184,8 @@ export default function Solicitudes() {
         params: { estado: nuevoEstado }
       });
       
-      setSolicitudes(solicitudes.map(s => 
+      // Actualización optimista
+      setSolicitudes(prev => prev.map(s => 
         s.id === id ? { ...s, estado: nuevoEstado } : s
       ));
 
@@ -203,16 +207,7 @@ export default function Solicitudes() {
     }
   };
 
-  const getBadgeClass = (estado) => {
-    const badges = {
-      PENDIENTE: 'badge-pendiente',
-      ENVIADO: 'badge-enviado',
-      COMPLETADO: 'badge-completado',
-      CANCELADO: 'badge-cancelado',
-    };
-    return badges[estado] || 'badge-pendiente';
-  };
-
+  // Funciones helper para renderizado
   const getEstadoIcon = (estado) => {
     const icons = {
       PENDIENTE: 'fa-clock',
@@ -234,12 +229,195 @@ export default function Solicitudes() {
     return icons[tipo] || 'fa-box';
   };
 
-  const contadores = {
-    total: solicitudes.length,
-    pendientes: solicitudes.filter(s => s.estado === 'PENDIENTE').length,
-    enviadas: solicitudes.filter(s => s.estado === 'ENVIADO').length,
-    completadas: solicitudes.filter(s => s.estado === 'COMPLETADO').length,
+  // Configuración de estadísticas
+  const statsData = [
+    {
+      label: 'Total Solicitudes',
+      value: solicitudes.length,
+      icon: 'fa-list-check',
+      iconClass: 'stat-icon-total'
+    },
+    {
+      label: 'Pendientes',
+      value: solicitudes.filter(s => s.estado === 'PENDIENTE').length,
+      icon: 'fa-clock',
+      iconClass: 'stat-icon-pendientes'
+    },
+    {
+      label: 'En Proceso',
+      value: solicitudes.filter(s => s.estado === 'ENVIADO').length,
+      icon: 'fa-paper-plane',
+      iconClass: 'stat-icon-enviadas'
+    },
+    {
+      label: 'Completadas',
+      value: solicitudes.filter(s => s.estado === 'COMPLETADO').length,
+      icon: 'fa-circle-check',
+      iconClass: 'stat-icon-completadas'
+    }
+  ];
+
+  // Configuración de columnas para DataTable
+  const columns = [
+    {
+      header: 'Folio',
+      render: (s) => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <i className="fa-solid fa-barcode" style={{ color: '#5b4cdb' }}></i>
+          <strong>{s.folioCodigo}</strong>
+        </div>
+      )
+    },
+    {
+      header: 'Empresa',
+      render: (s) => (
+        <Badge type="activo" icon="fa-building">
+          {s.empresaCodigo}
+        </Badge>
+      )
+    },
+    {
+      header: 'Cliente',
+      render: (s) => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <i className="fa-solid fa-building" style={{ color: '#64748b' }}></i>
+          {s.clienteNombre}
+        </div>
+      )
+    },
+    {
+      header: 'Tipo Servicio',
+      render: (s) => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <i className={`fa-solid ${getTipoServicioIcon(s.tipoServicio)}`} style={{ color: '#5b4cdb' }}></i>
+          <span style={{ fontSize: '0.85rem' }}>{s.tipoServicio}</span>
+        </div>
+      )
+    },
+    {
+      header: 'Origen → Destino',
+      render: (s) => (
+        <div style={{ fontSize: '0.8rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', marginBottom: '0.2rem' }}>
+            <i className="fa-solid fa-location-dot" style={{ color: '#10b981', fontSize: '0.7rem' }}></i>
+            <span>{s.origenCiudad}</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+            <i className="fa-solid fa-flag-checkered" style={{ color: '#ef4444', fontSize: '0.7rem' }}></i>
+            <span>{s.destinoCiudad}</span>
+          </div>
+        </div>
+      )
+    },
+    {
+      header: 'Fecha',
+      render: (s) => (
+        <span style={{ fontSize: '0.85rem' }}>
+          {new Date(s.creadoEn).toLocaleDateString('es-MX', { 
+            day: '2-digit', 
+            month: 'short' 
+          })}
+        </span>
+      )
+    },
+    {
+      header: 'Estado',
+      render: (s) => (
+        <Badge type={s.estado.toLowerCase()} icon={getEstadoIcon(s.estado)}>
+          {s.estado}
+        </Badge>
+      )
+    },
+    {
+      header: 'Asignado',
+      render: (s) => (
+        s.asignadoAId ? (
+          <Badge type="activo" icon="fa-user-check">
+            Asignado
+          </Badge>
+        ) : (
+          <Badge type="inactivo" icon="fa-user-xmark">
+            Sin asignar
+          </Badge>
+        )
+      )
+    }
+  ];
+
+  // Configuración de acciones para DropdownActions
+  const getAcciones = (solicitud) => {
+    const items = [
+      {
+        label: 'Ver Detalles',
+        icon: 'fa-eye',
+        onClick: () => abrirDetalle(solicitud)
+      }
+    ];
+
+    // Agregar opción de asignar si está pendiente y sin asignar
+    if (!solicitud.asignadoAId && solicitud.estado === 'PENDIENTE') {
+      items.push({ divider: true });
+      items.push({
+        label: 'Asignar a Pricing',
+        icon: 'fa-user-plus',
+        onClick: () => abrirModalAsignar(solicitud),
+        customIconStyle: { color: '#10b981' }
+      });
+    }
+
+    // Agregar opciones de cambio de estado
+    if (solicitud.estado === 'PENDIENTE' || solicitud.estado === 'ENVIADO') {
+      items.push({ divider: true });
+      
+      if (solicitud.estado === 'PENDIENTE') {
+        items.push({
+          label: 'Marcar como Enviado',
+          icon: 'fa-paper-plane',
+          onClick: () => cambiarEstado(solicitud.id, 'ENVIADO'),
+          customIconStyle: { color: '#3b82f6' }
+        });
+      }
+
+      if (solicitud.estado === 'ENVIADO') {
+        items.push({
+          label: 'Marcar como Completado',
+          icon: 'fa-circle-check',
+          onClick: () => cambiarEstado(solicitud.id, 'COMPLETADO'),
+          customIconStyle: { color: '#10b981' }
+        });
+      }
+
+      items.push({
+        label: 'Cancelar',
+        icon: 'fa-ban',
+        onClick: () => cambiarEstado(solicitud.id, 'CANCELADO'),
+        danger: true
+      });
+    }
+
+    return items;
   };
+
+  // Botones de filtro de fecha como componente reutilizable
+  const FiltrosFecha = () => (
+    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+      {[
+        { valor: 'TODAS', label: 'Todas' },
+        { valor: 'HOY', label: 'Hoy' },
+        { valor: 'SEMANA', label: '7 días' },
+        { valor: 'MES', label: '30 días' }
+      ].map((f) => (
+        <button
+          key={f.valor}
+          className={`btn btn-sm ${filtroFecha === f.valor ? 'btn-primary' : 'btn-secondary'}`}
+          onClick={() => setFiltroFecha(f.valor)}
+          style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem' }}
+        >
+          {f.label}
+        </button>
+      ))}
+    </div>
+  );
 
   if (loading) {
     return (
@@ -282,6 +460,7 @@ export default function Solicitudes() {
         />
         
         <main className="main-panel">
+          {/* Info Section con Filtros de Fecha */}
           <div className="info-section">
             <div className="info-item">
               <i className="fa-solid fa-calendar"></i>
@@ -300,81 +479,14 @@ export default function Solicitudes() {
               <span className="info-value">{solicitudesFiltradas.length} de {solicitudes.length}</span>
             </div>
             <div className="info-item">
-              <div style={{ display: 'flex', gap: '0.5rem' }}>
-                <button
-                  className={`btn btn-sm ${filtroFecha === 'TODAS' ? 'btn-primary' : 'btn-secondary'}`}
-                  onClick={() => setFiltroFecha('TODAS')}
-                  style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem' }}
-                >
-                  Todas
-                </button>
-                <button
-                  className={`btn btn-sm ${filtroFecha === 'HOY' ? 'btn-primary' : 'btn-secondary'}`}
-                  onClick={() => setFiltroFecha('HOY')}
-                  style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem' }}
-                >
-                  Hoy
-                </button>
-                <button
-                  className={`btn btn-sm ${filtroFecha === 'SEMANA' ? 'btn-primary' : 'btn-secondary'}`}
-                  onClick={() => setFiltroFecha('SEMANA')}
-                  style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem' }}
-                >
-                  7 días
-                </button>
-                <button
-                  className={`btn btn-sm ${filtroFecha === 'MES' ? 'btn-primary' : 'btn-secondary'}`}
-                  onClick={() => setFiltroFecha('MES')}
-                  style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem' }}
-                >
-                  30 días
-                </button>
-              </div>
+              <FiltrosFecha />
             </div>
           </div>
 
-          <div className="stats-grid">
-            <div className="stat-card">
-              <div className="stat-icon stat-icon-total">
-                <i className="fa-solid fa-list-check"></i>
-              </div>
-              <div className="stat-content">
-                <div className="stat-value">{contadores.total}</div>
-                <div className="stat-label">Total Solicitudes</div>
-              </div>
-            </div>
+          {/* Stats Grid Component */}
+          <StatsGrid stats={statsData} />
 
-            <div className="stat-card">
-              <div className="stat-icon stat-icon-pendientes">
-                <i className="fa-solid fa-clock"></i>
-              </div>
-              <div className="stat-content">
-                <div className="stat-value">{contadores.pendientes}</div>
-                <div className="stat-label">Pendientes</div>
-              </div>
-            </div>
-
-            <div className="stat-card">
-              <div className="stat-icon stat-icon-enviadas">
-                <i className="fa-solid fa-paper-plane"></i>
-              </div>
-              <div className="stat-content">
-                <div className="stat-value">{contadores.enviadas}</div>
-                <div className="stat-label">En Proceso</div>
-              </div>
-            </div>
-
-            <div className="stat-card">
-              <div className="stat-icon stat-icon-completadas">
-                <i className="fa-solid fa-circle-check"></i>
-              </div>
-              <div className="stat-content">
-                <div className="stat-value">{contadores.completadas}</div>
-                <div className="stat-label">Completadas</div>
-              </div>
-            </div>
-          </div>
-
+          {/* Error Alert */}
           {error && (
             <div className="alert alert-error">
               <i className="fa-solid fa-exclamation-circle"></i>
@@ -382,267 +494,115 @@ export default function Solicitudes() {
             </div>
           )}
 
-          <div className="table-container">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Folio</th>
-                  <th>Empresa</th>
-                  <th>Cliente</th>
-                  <th>Tipo Servicio</th>
-                  <th>Origen → Destino</th>
-                  <th>Fecha</th>
-                  <th>Estado</th>
-                  <th>Asignado</th>
-                  <th>Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {solicitudesFiltradas.map(solicitud => (
-                  <tr key={solicitud.id}>
-                    <td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <i className="fa-solid fa-barcode" style={{ color: '#5b4cdb' }}></i>
-                        <strong>{solicitud.folioCodigo}</strong>
-                      </div>
-                    </td>
-                    <td>
-                      <span className="badge badge-activo" style={{ fontSize: '0.7rem' }}>
-                        {solicitud.empresaCodigo}
-                      </span>
-                    </td>
-                    <td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <i className="fa-solid fa-building" style={{ color: '#64748b' }}></i>
-                        {solicitud.clienteNombre}
-                      </div>
-                    </td>
-                    <td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <i className={`fa-solid ${getTipoServicioIcon(solicitud.tipoServicio)}`} style={{ color: '#5b4cdb' }}></i>
-                        <span style={{ fontSize: '0.85rem' }}>{solicitud.tipoServicio}</span>
-                      </div>
-                    </td>
-                    <td>
-                      <div style={{ fontSize: '0.8rem' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', marginBottom: '0.2rem' }}>
-                          <i className="fa-solid fa-location-dot" style={{ color: '#10b981', fontSize: '0.7rem' }}></i>
-                          <span>{solicitud.origenCiudad}</span>
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                          <i className="fa-solid fa-flag-checkered" style={{ color: '#ef4444', fontSize: '0.7rem' }}></i>
-                          <span>{solicitud.destinoCiudad}</span>
-                        </div>
-                      </div>
-                    </td>
-                    <td style={{ fontSize: '0.85rem' }}>
-                      {new Date(solicitud.creadoEn).toLocaleDateString('es-MX', { 
-                        day: '2-digit', 
-                        month: 'short' 
-                      })}
-                    </td>
-                    <td>
-                      <span className={`badge ${getBadgeClass(solicitud.estado)}`}>
-                        <i className={`fa-solid ${getEstadoIcon(solicitud.estado)}`}></i>
-                        {solicitud.estado}
-                      </span>
-                    </td>
-                    <td>
-                      {solicitud.asignadoAId ? (
-                        <span className="badge badge-activo">
-                          <i className="fa-solid fa-user-check"></i> Asignado
-                        </span>
-                      ) : (
-                        <span className="badge badge-inactivo">
-                          <i className="fa-solid fa-user-xmark"></i> Sin asignar
-                        </span>
-                      )}
-                    </td>
-                    <td>
-                      <div className="dropdown">
-                        <button
-                          className="btn btn-sm btn-primary-app dropdown-toggle"
-                          data-bs-toggle="dropdown"
-                          aria-expanded="false"
-                        >
-                          <i className="fa-solid fa-ellipsis-vertical"></i>
-                        </button>
-
-                        <ul className="dropdown-menu dropdown-menu-end">
-                          <li>
-                            <button
-                              className="dropdown-item"
-                              onClick={() => abrirDetalle(solicitud)}
-                            >
-                              <i className="fa-solid fa-eye text-purple me-2"></i>
-                              Ver Detalles
-                            </button>
-                          </li>
-
-                          {!solicitud.asignadoAId && solicitud.estado === 'PENDIENTE' && (
-                            <>
-                              <li><hr className="dropdown-divider" /></li>
-                              <li>
-                                <button
-                                  className="dropdown-item"
-                                  onClick={() => abrirModalAsignar(solicitud)}
-                                >
-                                  <i className="fa-solid fa-user-plus me-2" style={{ color: '#10b981' }}></i>
-                                  Asignar a Pricing
-                                </button>
-                              </li>
-                            </>
-                          )}
-
-                          {(solicitud.estado === 'PENDIENTE' || solicitud.estado === 'ENVIADO') && (
-                            <>
-                              <li><hr className="dropdown-divider" /></li>
-                              
-                              {solicitud.estado === 'PENDIENTE' && (
-                                <li>
-                                  <button
-                                    className="dropdown-item"
-                                    onClick={() => cambiarEstado(solicitud.id, 'ENVIADO')}
-                                  >
-                                    <i className="fa-solid fa-paper-plane me-2" style={{ color: '#3b82f6' }}></i>
-                                    Marcar como Enviado
-                                  </button>
-                                </li>
-                              )}
-
-                              {solicitud.estado === 'ENVIADO' && (
-                                <li>
-                                  <button
-                                    className="dropdown-item"
-                                    onClick={() => cambiarEstado(solicitud.id, 'COMPLETADO')}
-                                  >
-                                    <i className="fa-solid fa-circle-check me-2" style={{ color: '#10b981' }}></i>
-                                    Marcar como Completado
-                                  </button>
-                                </li>
-                              )}
-
-                              <li>
-                                <button
-                                  className="dropdown-item text-danger"
-                                  onClick={() => cambiarEstado(solicitud.id, 'CANCELADO')}
-                                >
-                                  <i className="fa-solid fa-ban text-danger me-2"></i>
-                                  Cancelar
-                                </button>
-                              </li>
-                            </>
-                          )}
-                        </ul>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-
-            {solicitudesFiltradas.length === 0 && (
-              <div className="empty-state">
-                <i className="fa-solid fa-inbox"></i>
-                <p>No se encontraron solicitudes</p>
-              </div>
+          {/* DataTable Component */}
+          <DataTable
+            data={solicitudesFiltradas}
+            columns={columns}
+            renderActions={(solicitud) => (
+              <DropdownActions
+                items={getAcciones(solicitud)}
+                buttonLabel={
+                  <i className="fa-solid fa-ellipsis-vertical"></i>
+                }
+              />
             )}
-          </div>
+            emptyMessage="No se encontraron solicitudes"
+            emptyIcon="fa-inbox"
+          />
         </main>
         
         <Footer />
       </div>
 
-      {/* Modal de Detalle (igual que en MisSolicitudes) */}
-      {modalDetalle && solicitudSeleccionada && (
-        <div className="modal-overlay" onClick={cerrarModal}>
-          <div className="modal-content modal-content-large" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3><i className="fa-solid fa-file-lines"></i> Detalle de Solicitud</h3>
-              <button className="modal-close" onClick={cerrarModal}>
-                <i className="fa-solid fa-times"></i>
-              </button>
-            </div>
-            <div className="modal-body">
-              {/* Mismo contenido que MisSolicitudes */}
-              <div className="solicitud-header-detail">
-                <div className="detail-row">
-                  <div className="detail-col">
-                    <label><i className="fa-solid fa-barcode"></i> Folio</label>
-                    <div className="detail-value">{solicitudSeleccionada.folioCodigo}</div>
-                  </div>
-                  <div className="detail-col">
-                    <label><i className="fa-solid fa-calendar"></i> Fecha Emisión</label>
-                    <div className="detail-value">
-                      {new Date(solicitudSeleccionada.fechaEmision).toLocaleDateString('es-MX')}
-                    </div>
-                  </div>
-                  <div className="detail-col">
-                    <label><i className="fa-solid fa-traffic-light"></i> Estado</label>
-                    <span className={`badge ${getBadgeClass(solicitudSeleccionada.estado)}`}>
-                      {solicitudSeleccionada.estado}
-                    </span>
+      {/* Modal de Detalle usando componente Modal */}
+      <Modal
+        isOpen={modalDetalle && solicitudSeleccionada}
+        onClose={cerrarModal}
+        title={
+          <>
+            <i className="fa-solid fa-file-lines"></i> Detalle de Solicitud
+          </>
+        }
+        large={true}
+        footer={
+          <button className="btn btn-secondary" onClick={cerrarModal}>
+            <i className="fa-solid fa-times"></i> Cerrar
+          </button>
+        }
+      >
+        {solicitudSeleccionada && (
+          <>
+            <div className="solicitud-header-detail">
+              <div className="detail-row">
+                <div className="detail-col">
+                  <label><i className="fa-solid fa-barcode"></i> Folio</label>
+                  <div className="detail-value">{solicitudSeleccionada.folioCodigo}</div>
+                </div>
+                <div className="detail-col">
+                  <label><i className="fa-solid fa-calendar"></i> Fecha Emisión</label>
+                  <div className="detail-value">
+                    {new Date(solicitudSeleccionada.fechaEmision).toLocaleDateString('es-MX')}
                   </div>
                 </div>
+                <div className="detail-col">
+                  <label><i className="fa-solid fa-traffic-light"></i> Estado</label>
+                  <Badge type={solicitudSeleccionada.estado.toLowerCase()}>
+                    {solicitudSeleccionada.estado}
+                  </Badge>
+                </div>
               </div>
-              {/* ... resto del modal igual que MisSolicitudes ... */}
             </div>
-            <div className="modal-footer">
-              <button className="btn btn-secondary" onClick={cerrarModal}>
-                <i className="fa-solid fa-times"></i> Cerrar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+            {/* ... resto del contenido del modal ... */}
+          </>
+        )}
+      </Modal>
 
-      {/* Modal Asignar */}
-      {modalAsignar && solicitudSeleccionada && (
-        <div className="modal-overlay" onClick={cerrarModal}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3><i className="fa-solid fa-user-plus"></i> Asignar Solicitud</h3>
-              <button className="modal-close" onClick={cerrarModal}>
-                <i className="fa-solid fa-times"></i>
-              </button>
-            </div>
-            <div className="modal-body">
-              <div className="form-section">
-                <label>Solicitud</label>
-                <input
-                  type="text"
-                  value={solicitudSeleccionada.folioCodigo}
-                  disabled
-                  className="form-input"
-                />
-              </div>
-              <div className="form-section">
-                <label className="required-field">Seleccionar Empleado de Pricing</label>
-                <select
-                  value={empleadoSeleccionado}
-                  onChange={(e) => setEmpleadoSeleccionado(e.target.value)}
-                  className="form-select"
-                >
-                  <option value="">-- Seleccione un empleado --</option>
-                  {empleados.map(emp => (
-                    <option key={emp.id} value={emp.id}>
-                      {emp.nombre} ({emp.email})
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-            <div className="modal-footer">
-              <button className="btn btn-secondary" onClick={cerrarModal}>
-                <i className="fa-solid fa-times"></i> Cancelar
-              </button>
-              <button className="btn btn-primary" onClick={asignarSolicitud}>
-                <i className="fa-solid fa-check"></i> Asignar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Modal Asignar usando componente Modal */}
+      <Modal
+        isOpen={modalAsignar && solicitudSeleccionada}
+        onClose={cerrarModal}
+        title={
+          <>
+            <i className="fa-solid fa-user-plus"></i> Asignar Solicitud
+          </>
+        }
+        footer={
+          <>
+            <button className="btn btn-secondary" onClick={cerrarModal}>
+              <i className="fa-solid fa-times"></i> Cancelar
+            </button>
+            <button className="btn btn-primary" onClick={asignarSolicitud}>
+              <i className="fa-solid fa-check"></i> Asignar
+            </button>
+          </>
+        }
+      >
+        {solicitudSeleccionada && (
+          <>
+            <FormField
+              label="Solicitud"
+              value={solicitudSeleccionada.folioCodigo}
+              disabled={true}
+            />
+            
+            <FormField
+              type="select"
+              label="Seleccionar Empleado de Pricing"
+              name="empleadoId"
+              value={formAsignacion.empleadoId}
+              onChange={handleAsignacionChange}
+              options={[
+                { value: '', label: '-- Seleccione un empleado --' },
+                ...empleados.map(emp => ({
+                  value: emp.id,
+                  label: `${emp.nombre} (${emp.email})`
+                }))
+              ]}
+              required={true}
+            />
+          </>
+        )}
+      </Modal>
     </div>
   );
 }

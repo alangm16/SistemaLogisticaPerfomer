@@ -1,10 +1,17 @@
-// src/pages/Empleados.jsx
+// src/pages/Empleados.jsx - VERSIÓN OPTIMIZADA
 import { useEffect, useState } from 'react';
 import { api } from '../services/api';
 import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
 import Subheader from '../components/Subheader';
 import Footer from '../components/Footer';
+import DataTable from '../components/DataTable';
+import DropdownActions from '../components/DropdownActions';
+import Modal from '../components/Modal';
+import FormField from '../components/FormField';
+import StatsGrid from '../components/StatsGrid';
+import Badge from '../components/Badge';
+import useForm from '../hooks/useForm';
 import Swal from 'sweetalert2';
 import '../styles/dashboard.css';
 import '../styles/generales.css';
@@ -19,9 +26,11 @@ export default function Empleados() {
   const [empleadoSeleccionado, setEmpleadoSeleccionado] = useState(null);
   const [filtro, setFiltro] = useState('TODOS');
   const [busqueda, setBusqueda] = useState('');
-  const [formData, setFormData] = useState({ 
-    nombre: '', 
-    email: '', 
+
+  // Usar el hook personalizado para el formulario
+  const { values: formData, handleChange, resetForm } = useForm({
+    nombre: '',
+    email: '',
     passwordHash: '',
     rol: 'VENDEDOR',
     estado: 'ACTIVO'
@@ -29,6 +38,8 @@ export default function Empleados() {
 
   const rol = localStorage.getItem('rol');
   const nombre = localStorage.getItem('nombre');
+
+  useEffect(() => { cargar(); }, []);
 
   const cargar = async () => {
     try {
@@ -41,8 +52,6 @@ export default function Empleados() {
       setLoading(false);
     }
   };
-
-  useEffect(() => { cargar(); }, []);
 
   const aprobar = async (id) => {
     try {
@@ -97,14 +106,13 @@ export default function Empleados() {
         title: 'Error',
         text: 'No se pudo eliminar el empleado.',
       });
-
     }
   };
 
   const abrirModal = (empleado) => {
     setEmpleadoSeleccionado(empleado);
-    setFormData({ 
-      nombre: empleado.nombre, 
+    resetForm({
+      nombre: empleado.nombre,
       email: empleado.email,
       passwordHash: '',
       rol: empleado.rol,
@@ -117,40 +125,23 @@ export default function Empleados() {
     setModalAbierto(false);
     setModalNuevo(false);
     setEmpleadoSeleccionado(null);
-    setFormData({ 
-      nombre: '', 
-      email: '', 
-      passwordHash: '',
-      rol: 'VENDEDOR',
-      estado: 'ACTIVO'
-    });
+    resetForm();
   };
 
   const abrirModalNuevo = () => {
-    setFormData({ 
-      nombre: '', 
-      email: '', 
-      passwordHash: '',
-      rol: 'VENDEDOR',
-      estado: 'ACTIVO'
-    });
+    resetForm();
     setModalNuevo(true);
-  };
-
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
   };
 
   const guardarCambios = async () => {
     const result = await Swal.fire({
-        title: '¿Guardar cambios?',
-        text: `¿Deseas guardar los cambios para ${formData.nombre}?`,
-        icon: 'question',
-        showCancelButton: true,
-        confirmButtonText: 'Guardar',
-        cancelButtonText: 'Cancelar',
-        reverseButtons: true,
+      title: '¿Guardar cambios?',
+      text: `¿Deseas guardar los cambios para ${formData.nombre}?`,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonText: 'Guardar',
+      cancelButtonText: 'Cancelar',
+      reverseButtons: true,
     });
 
     if (!result.isConfirmed) return;
@@ -163,41 +154,33 @@ export default function Empleados() {
         estado: formData.estado
       };
       
-      // Solo incluir password si se proporcionó
       if (formData.passwordHash) {
         payload.passwordHash = formData.passwordHash;
       }
 
       await api.put(`/empleados/${empleadoSeleccionado.id}`, payload);
-
-      setEmpleados(u => u.map(x => 
-        x.id === empleadoSeleccionado.id 
-          ? { ...x, ...payload } 
-          : x
-      ));
-
+      await cargar();
       cerrarModal();
-      await Swal.fire({
-          title: '¡Guardado!',
-          text: 'Los cambios se guardaron correctamente.',
-          icon: 'success',
-          timer: 2000,
-          showConfirmButton: false,
+      Swal.fire({
+        icon: 'success',
+        title: '¡Guardado!',
+        text: 'Los cambios se guardaron correctamente.',
+        timer: 2000,
+        showConfirmButton: false,
       });
-
     } catch (err) {
       console.log(err);
       Swal.fire({
-          title: 'Error',
-          text: 'No se pudieron guardar los cambios.',
-          icon: 'error',
+        icon: 'error',
+        title: 'Error',
+        text: 'No se pudieron guardar los cambios.',
       });
     }
   };
 
   const crearEmpleado = async () => {
     if (!formData.nombre || !formData.email || !formData.passwordHash) {
-       Swal.fire({
+      Swal.fire({
         icon: 'warning',
         title: 'Campos incompletos',
         text: 'Por favor completa todos los campos obligatorios',
@@ -214,14 +197,13 @@ export default function Empleados() {
       cancelButtonText: 'Cancelar',
     });
 
-
     if (!result.isConfirmed) return;
 
     try {
-      const res = await api.post('/empleados', formData);
-      setEmpleados([...empleados, res.data]);
+      await api.post('/empleados', formData);
+      await cargar();
       cerrarModal();
-      await Swal.fire({
+      Swal.fire({
         icon: 'success',
         title: 'Empleado creado',
         text: 'El empleado fue creado correctamente.',
@@ -238,36 +220,124 @@ export default function Empleados() {
     }
   };
 
+  // Filtrado de empleados
   const empleadosFiltrados = empleados.filter(u => {
-    const coincideBusqueda = u.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
-                             u.email.toLowerCase().includes(busqueda.toLowerCase());
+    const coincideBusqueda = 
+      u.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
+      u.email.toLowerCase().includes(busqueda.toLowerCase());
+    
     const coincideFiltro = filtro === 'TODOS' || u.estado === filtro;
+    
     return coincideBusqueda && coincideFiltro;
   });
 
-  const getEstadoBadgeClass = (estado) => {
-    switch(estado) {
-      case 'ACTIVO': return 'badge-activo';
-      case 'INACTIVO': return 'badge-inactivo';
-      case 'PENDIENTE': return 'badge-pendiente';
-      default: return 'badge-default';
-    }
-  };
-
-  const getRolBadgeClass = (rolEmpleado) => {
-    switch(rolEmpleado) {
-      case 'ADMIN': return 'badge-admin';
-      case 'PRICING': return 'badge-pricing';
-      case 'VENDEDOR': return 'badge-vendedor';
-      default: return 'badge-default';
-    }
-  };
-
+  // Contadores para las stats
   const contadores = {
     total: empleados.length,
     activos: empleados.filter(u => u.estado === 'ACTIVO').length,
     pendientes: empleados.filter(u => u.estado === 'PENDIENTE').length,
     inactivos: empleados.filter(u => u.estado === 'INACTIVO').length,
+  };
+
+  // Configuración de columnas para DataTable
+  const columns = [
+    {
+      header: 'Empleado',
+      render: (u) => (
+        <div className="user-cell">
+          <div className="user-avatar-small">
+            {u.nombre.substring(0, 2).toUpperCase()}
+          </div>
+          <span className="user-name-text">{u.nombre}</span>
+        </div>
+      )
+    },
+    { 
+      header: 'Email', 
+      render: (u) => u.email 
+    },
+    {
+      header: 'Rol',
+      render: (u) => (
+        <Badge type={u.rol.toLowerCase()}>
+          {u.rol}
+        </Badge>
+      )
+    },
+    {
+      header: 'Estado',
+      render: (u) => (
+        <Badge type={u.estado.toLowerCase()}>
+          {u.estado}
+        </Badge>
+      )
+    }
+  ];
+
+  // Configuración de stats para StatsGrid
+  const statsData = [
+    {
+      label: 'Total Empleados',
+      value: contadores.total,
+      icon: 'fa-users',
+      iconClass: 'stat-icon-total'
+    },
+    {
+      label: 'Activos',
+      value: contadores.activos,
+      icon: 'fa-user-check',
+      iconClass: 'stat-icon-activos'
+    },
+    {
+      label: 'Pendientes',
+      value: contadores.pendientes,
+      icon: 'fa-clock',
+      iconClass: 'stat-icon-pendientes'
+    },
+    {
+      label: 'Inactivos',
+      value: contadores.inactivos,
+      icon: 'fa-user-slash',
+      iconClass: 'stat-icon-inactivos'
+    }
+  ];
+
+  // Obtener acciones dinámicas según el estado del empleado
+  const getAccionesEmpleado = (empleado) => {
+    const acciones = [
+      {
+        label: 'Ver Detalles',
+        icon: 'fa-eye',
+        onClick: () => abrirModal(empleado)
+      }
+    ];
+
+    // Acciones según estado
+    if (empleado.estado === 'PENDIENTE') {
+      acciones.push({
+        label: 'Aprobar',
+        icon: 'fa-check',
+        onClick: () => aprobar(empleado.id)
+      });
+    }
+
+    if (empleado.estado === 'ACTIVO') {
+      acciones.push({
+        label: 'Desactivar',
+        icon: 'fa-ban',
+        onClick: () => rechazar(empleado.id)
+      });
+    }
+
+    acciones.push({ divider: true });
+    acciones.push({
+      label: 'Eliminar',
+      icon: 'fa-trash',
+      onClick: () => eliminar(empleado.id),
+      danger: true
+    });
+
+    return acciones;
   };
 
   if (loading) {
@@ -276,7 +346,6 @@ export default function Empleados() {
         <Sidebar rol={rol} />
         <div className="dashboard-content">
           <Header nombre={nombre} rol={rol} />
-          <Subheader status={status} onAgregarClick={abrirModalNuevo} />
           <main className="main-panel">
             <div className="loading-container">
               <div className="spinner"></div>
@@ -292,10 +361,10 @@ export default function Empleados() {
   return (
     <div className="dashboard-layout">
       <Sidebar rol={rol} />
-      
+
       <div className="dashboard-content">
         <Header nombre={nombre} rol={rol} />
-        <Subheader 
+        <Subheader
           titulo="Gestión de Empleados"
           busqueda={busqueda}
           onBusquedaChange={setBusqueda}
@@ -309,23 +378,23 @@ export default function Empleados() {
           ]}
           onAgregarClick={abrirModalNuevo}
         />
-        
+
         <main className="main-panel">
-          {/* Información del sistema */}
+          {/* Info Section */}
           <div className="info-section">
             <div className="info-item">
               <i className="fa-solid fa-calendar"></i>
               <span className="info-value">
-                {new Date().toLocaleDateString('es-MX', { 
-                  weekday: 'long', 
-                  year: 'numeric', 
-                  month: 'long', 
-                  day: 'numeric' 
+                {new Date().toLocaleDateString('es-MX', {
+                  weekday: 'long',
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric'
                 })}
               </span>
             </div>
             <div className="info-item">
-              <div className={status === 'ok' ? 'status-indicator' : status === 'loading' ? 'status-indicator loading' : 'status-indicator error'}></div>
+              <div className={`status-indicator ${status !== 'ok' ? status : ''}`}></div>
               <span>Sistema:</span>
               <span className="info-value">
                 {status === 'ok' ? 'Operacional' : status === 'loading' ? 'Conectando...' : 'Error'}
@@ -340,48 +409,10 @@ export default function Empleados() {
             </div>
           </div>
 
-          <div className="stats-grid">
-            <div className="stat-card">
-              <div className="stat-icon stat-icon-total">
-                <i className="fa-solid fa-users"></i>
-              </div>
-              <div className="stat-content">
-                <div className="stat-value">{contadores.total}</div>
-                <div className="stat-label">Total Empleados</div>
-              </div>
-            </div>
+          {/* Stats Grid */}
+          <StatsGrid stats={statsData} />
 
-            <div className="stat-card">
-              <div className="stat-icon stat-icon-activos">
-                <i className="fa-solid fa-user-check"></i>
-              </div>
-              <div className="stat-content">
-                <div className="stat-value">{contadores.activos}</div>
-                <div className="stat-label">Activos</div>
-              </div>
-            </div>
-
-            <div className="stat-card">
-              <div className="stat-icon stat-icon-pendientes">
-                <i className="fa-solid fa-clock"></i>
-              </div>
-              <div className="stat-content">
-                <div className="stat-value">{contadores.pendientes}</div>
-                <div className="stat-label">Pendientes</div>
-              </div>
-            </div>
-
-            <div className="stat-card">
-              <div className="stat-icon stat-icon-inactivos">
-                <i className="fa-solid fa-user-slash"></i>
-              </div>
-              <div className="stat-content">
-                <div className="stat-value">{contadores.inactivos}</div>
-                <div className="stat-label">Inactivos</div>
-              </div>
-            </div>
-          </div>
-
+          {/* Error Alert */}
           {error && (
             <div className="alert alert-error">
               <i className="fa-solid fa-exclamation-circle"></i>
@@ -389,344 +420,197 @@ export default function Empleados() {
             </div>
           )}
 
-          <div className="table-container">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Empleado</th>
-                  <th>Email</th>
-                  <th>Rol</th>
-                  <th>Estado</th>
-                  <th>Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {empleadosFiltrados.map(empleado => (
-                  <tr key={empleado.id}>
-                    <td>
-                      <div className="user-cell">
-                        <div className="user-avatar-small">
-                          {empleado.nombre.substring(0, 2).toUpperCase()}
-                        </div>
-                        <span className="user-name-text">{empleado.nombre}</span>
-                      </div>
-                    </td>
-                    <td>{empleado.email}</td>
-                    <td>
-                      <span className={`badge ${getRolBadgeClass(empleado.rol)}`}>
-                        {empleado.rol}
-                      </span>
-                    </td>
-                    <td>
-                      <span className={`badge ${getEstadoBadgeClass(empleado.estado)}`}>
-                        {empleado.estado}
-                      </span>
-                    </td>
-                    <td>
-                      <div className="dropdown">
-                        <button
-                          className="btn btn-sm btn-primary-app dropdown-toggle"
-                          data-bs-toggle="dropdown"
-                          aria-expanded="false"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          Opciones
-                        </button>
-
-                        <ul className="dropdown-menu dropdown-menu-end">
-                          <li>
-                            <button
-                              className="dropdown-item"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                abrirModal(empleado);
-                              }}
-                            >
-                              <i className="fa-solid fa-eye text-purple me-2"></i>
-                              Ver Detalles
-                            </button>
-                          </li>
-
-                          {empleado.estado === 'PENDIENTE' && (
-                            <li>
-                              <button
-                                className="dropdown-item"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  aprobar(empleado.id);
-                                }}
-                              >
-                                <i className="fa-solid fa-check text-purple me-2"></i>
-                                Aprobar
-                              </button>
-                            </li>
-                          )}
-
-                          {empleado.estado === 'ACTIVO' && (
-                            <li>
-                              <button
-                                className="dropdown-item"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  rechazar(empleado.id);
-                                }}
-                              >
-                                <i className="fa-solid fa-ban text-purple me-2"></i>
-                                Desactivar
-                              </button>
-                            </li>
-                          )}
-
-                          <li><hr className="dropdown-divider" /></li>
-
-                          <li>
-                            <button
-                              className="dropdown-item text-danger"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                eliminar(empleado.id);
-                              }}
-                            >
-                              <i className="fa-solid fa-trash text-danger me-2"></i>
-                              Eliminar
-                            </button>
-                          </li>
-                        </ul>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-
-            {empleadosFiltrados.length === 0 && (
-              <div className="empty-state">
-                <i className="fa-solid fa-users-slash"></i>
-                <p>No se encontraron empleados</p>
-              </div>
+          {/* Data Table */}
+          <DataTable
+            data={empleadosFiltrados}
+            columns={columns}
+            renderActions={(empleado) => (
+              <DropdownActions
+                items={getAccionesEmpleado(empleado)}
+              />
             )}
-          </div>
+            emptyMessage="No se encontraron empleados"
+            emptyIcon="fa-users-slash"
+          />
         </main>
-        
+
         <Footer />
       </div>
 
-      {/* Modal de edición */}
-      {modalAbierto && empleadoSeleccionado && (
-        <div className="modal-overlay" onClick={cerrarModal}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3>Editar Empleado</h3>
-              <button className="modal-close" onClick={cerrarModal}>
-                <i className="fa-solid fa-times"></i>
-              </button>
-            </div>
-
-            <div className="modal-body">
-              <div className="user-details-card">
-                <div className="user-avatar-large">
-                  {empleadoSeleccionado.nombre.substring(0, 2).toUpperCase()}
-                </div>
-                <h4>{empleadoSeleccionado.nombre}</h4>
-                <p className="user-email">{empleadoSeleccionado.email}</p>
-                
-                <div className="user-badges">
-                  <span className={`badge ${getRolBadgeClass(empleadoSeleccionado.rol)}`}>
-                    {empleadoSeleccionado.rol}
-                  </span>
-                  <span className={`badge ${getEstadoBadgeClass(empleadoSeleccionado.estado)}`}>
-                    {empleadoSeleccionado.estado}
-                  </span>
-                </div>
-              </div>
-
-              <div className="form-section">
-                <label>ID del Empleado</label>
-                <input 
-                  type="text" 
-                  value={empleadoSeleccionado.id} 
-                  disabled 
-                  className="input-disabled"
-                />
-              </div>
-
-              <div className="form-section">
-                <label>Nombre Completo *</label>
-                <input 
-                  type="text" 
-                  name="nombre"
-                  value={formData.nombre}
-                  onChange={handleInputChange}
-                  className="select-input"
-                  placeholder="Ingrese el nombre completo"
-                />
-              </div>
-
-              <div className="form-section">
-                <label>Correo Electrónico *</label>
-                <input 
-                  type="email" 
-                  name="email"
-                  value={formData.email}
-                  onChange={handleInputChange}
-                  className="select-input"
-                  placeholder="Ingrese el correo electrónico"
-                />
-              </div>
-
-              <div className="form-section">
-                <label>Nueva Contraseña (opcional)</label>
-                <input 
-                  type="password" 
-                  name="passwordHash"
-                  value={formData.passwordHash}
-                  onChange={handleInputChange}
-                  className="select-input"
-                  placeholder="Dejar en blanco para mantener la actual"
-                />
-              </div>
-
-              <div className="form-section">
-                <label>Rol</label>
-                <select 
-                  name="rol"
-                  value={formData.rol} 
-                  onChange={handleInputChange}
-                  className="select-input"
-                >
-                  <option value="VENDEDOR">VENDEDOR</option>
-                  <option value="PRICING">PRICING</option>
-                  <option value="ADMIN">ADMIN</option>
-                </select>
-              </div>
-
-              <div className="form-section">
-                <label>Estado</label>
-                <select 
-                  name="estado"
-                  value={formData.estado} 
-                  onChange={handleInputChange}
-                  className="select-input"
-                >
-                  <option value="ACTIVO">ACTIVO</option>
-                  <option value="INACTIVO">INACTIVO</option>
-                  <option value="PENDIENTE">PENDIENTE</option>
-                </select>
-              </div>
-
-              <div className="form-section">
-                <button 
-                  className="btn btn-primary btn-full"
-                  onClick={guardarCambios}
-                >
-                  <i className="fa-solid fa-save"></i>
-                  Guardar
-                </button>
-              </div>
-            </div>
-
-            <div className="modal-footer">
-              <button 
-                className="btn btn-danger"
-                onClick={() => eliminar(empleadoSeleccionado.id)}
-              >
-                <i className="fa-solid fa-trash"></i>
-                Eliminar
-              </button>
-            </div>
+      {/* Modal de Edición */}
+      <Modal
+        isOpen={modalAbierto && empleadoSeleccionado}
+        onClose={cerrarModal}
+        title="Editar Empleado"
+        footer={
+          <>
+            <button className="btn btn-danger" onClick={() => eliminar(empleadoSeleccionado.id)}>
+              <i className="fa-solid fa-trash"></i>
+              Eliminar
+            </button>
+            <button className="btn btn-secondary" onClick={cerrarModal}>
+              <i className="fa-solid fa-times"></i>
+              Cancelar
+            </button>
+            <button className="btn btn-primary" onClick={guardarCambios}>
+              <i className="fa-solid fa-save"></i>
+              Guardar
+            </button>
+          </>
+        }
+      >
+        {/* User Details Card */}
+        <div className="user-details-card">
+          <div className="user-avatar-large">
+            {empleadoSeleccionado?.nombre.substring(0, 2).toUpperCase()}
+          </div>
+          <h4>{empleadoSeleccionado?.nombre}</h4>
+          <p className="user-email">{empleadoSeleccionado?.email}</p>
+          <div className="user-badges">
+            <Badge type={empleadoSeleccionado?.rol.toLowerCase()}>
+              {empleadoSeleccionado?.rol}
+            </Badge>
+            <Badge type={empleadoSeleccionado?.estado.toLowerCase()}>
+              {empleadoSeleccionado?.estado}
+            </Badge>
           </div>
         </div>
-      )}
 
-      {/* Modal de nuevo empleado */}
-      {modalNuevo && (
-        <div className="modal-overlay" onClick={cerrarModal}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3>Nuevo Empleado</h3>
-              <button className="modal-close" onClick={cerrarModal}>
-                <i className="fa-solid fa-times"></i>
-              </button>
-            </div>
+        {/* Formulario */}
+        <FormField
+          label="ID del Empleado"
+          value={empleadoSeleccionado?.id || ''}
+          disabled={true}
+        />
 
-            <div className="modal-body">
-              <div className="form-section">
-                <label>Nombre Completo *</label>
-                <input 
-                  type="text" 
-                  name="nombre"
-                  value={formData.nombre}
-                  onChange={handleInputChange}
-                  className="select-input"
-                  placeholder="Ingrese el nombre completo"
-                />
-              </div>
+        <FormField
+          label="Nombre Completo"
+          name="nombre"
+          value={formData.nombre}
+          onChange={handleChange}
+          required
+          placeholder="Ingrese el nombre completo"
+        />
 
-              <div className="form-section">
-                <label>Correo Electrónico *</label>
-                <input 
-                  type="email" 
-                  name="email"
-                  value={formData.email}
-                  onChange={handleInputChange}
-                  className="select-input"
-                  placeholder="Ingrese el correo electrónico"
-                />
-              </div>
+        <FormField
+          type="email"
+          label="Correo Electrónico"
+          name="email"
+          value={formData.email}
+          onChange={handleChange}
+          required
+          placeholder="Ingrese el correo electrónico"
+        />
 
-              <div className="form-section">
-                <label>Contraseña *</label>
-                <input 
-                  type="password" 
-                  name="passwordHash"
-                  value={formData.passwordHash}
-                  onChange={handleInputChange}
-                  className="select-input"
-                  placeholder="Ingrese una contraseña"
-                />
-              </div>
+        <FormField
+          type="password"
+          label="Nueva Contraseña (opcional)"
+          name="passwordHash"
+          value={formData.passwordHash}
+          onChange={handleChange}
+          placeholder="Dejar en blanco para mantener la actual"
+        />
 
-              <div className="form-section">
-                <label>Rol</label>
-                <select 
-                  name="rol"
-                  value={formData.rol} 
-                  onChange={handleInputChange}
-                  className="select-input"
-                >
-                  <option value="VENDEDOR">VENDEDOR</option>
-                  <option value="PRICING">PRICING</option>
-                  <option value="ADMIN">ADMIN</option>
-                </select>
-              </div>
+        <FormField
+          type="select"
+          label="Rol"
+          name="rol"
+          value={formData.rol}
+          onChange={handleChange}
+          options={[
+            { value: 'VENDEDOR', label: 'VENDEDOR' },
+            { value: 'PRICING', label: 'PRICING' },
+            { value: 'ADMIN', label: 'ADMIN' }
+          ]}
+        />
 
-              <div className="form-section">
-                <label>Estado</label>
-                <select 
-                  name="estado"
-                  value={formData.estado} 
-                  onChange={handleInputChange}
-                  className="select-input"
-                >
-                  <option value="ACTIVO">ACTIVO</option>
-                  <option value="INACTIVO">INACTIVO</option>
-                  <option value="PENDIENTE">PENDIENTE</option>
-                </select>
-              </div>
+        <FormField
+          type="select"
+          label="Estado"
+          name="estado"
+          value={formData.estado}
+          onChange={handleChange}
+          options={[
+            { value: 'ACTIVO', label: 'ACTIVO' },
+            { value: 'INACTIVO', label: 'INACTIVO' },
+            { value: 'PENDIENTE', label: 'PENDIENTE' }
+          ]}
+        />
+      </Modal>
 
-              <div className="form-section">
-                <button 
-                  className="btn btn-primary btn-full"
-                  onClick={crearEmpleado}
-                >
-                  <i className="fa-solid fa-plus"></i>
-                  Crear
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Modal de Nuevo Empleado */}
+      <Modal
+        isOpen={modalNuevo}
+        onClose={cerrarModal}
+        title="Nuevo Empleado"
+        footer={
+          <>
+            <button className="btn btn-secondary" onClick={cerrarModal}>
+              <i className="fa-solid fa-times"></i>
+              Cancelar
+            </button>
+            <button className="btn btn-primary" onClick={crearEmpleado}>
+              <i className="fa-solid fa-plus"></i>
+              Crear
+            </button>
+          </>
+        }
+      >
+        <FormField
+          label="Nombre Completo"
+          name="nombre"
+          value={formData.nombre}
+          onChange={handleChange}
+          required
+          placeholder="Ingrese el nombre completo"
+        />
+
+        <FormField
+          type="email"
+          label="Correo Electrónico"
+          name="email"
+          value={formData.email}
+          onChange={handleChange}
+          required
+          placeholder="Ingrese el correo electrónico"
+        />
+
+        <FormField
+          type="password"
+          label="Contraseña"
+          name="passwordHash"
+          value={formData.passwordHash}
+          onChange={handleChange}
+          required
+          placeholder="Ingrese una contraseña"
+        />
+
+        <FormField
+          type="select"
+          label="Rol"
+          name="rol"
+          value={formData.rol}
+          onChange={handleChange}
+          options={[
+            { value: 'VENDEDOR', label: 'VENDEDOR' },
+            { value: 'PRICING', label: 'PRICING' },
+            { value: 'ADMIN', label: 'ADMIN' }
+          ]}
+        />
+
+        <FormField
+          type="select"
+          label="Estado"
+          name="estado"
+          value={formData.estado}
+          onChange={handleChange}
+          options={[
+            { value: 'ACTIVO', label: 'ACTIVO' },
+            { value: 'INACTIVO', label: 'INACTIVO' },
+            { value: 'PENDIENTE', label: 'PENDIENTE' }
+          ]}
+        />
+      </Modal>
     </div>
   );
 }

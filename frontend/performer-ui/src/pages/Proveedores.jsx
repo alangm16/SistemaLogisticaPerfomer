@@ -1,10 +1,17 @@
-// src/pages/Proveedores.jsx
+// src/pages/Proveedores.jsx - VERSIÓN OPTIMIZADA
 import { useEffect, useState } from 'react';
 import { api } from '../services/api';
 import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
 import Subheader from '../components/Subheader';
 import Footer from '../components/Footer';
+import DataTable from '../components/DataTable';
+import DropdownActions from '../components/DropdownActions';
+import Modal from '../components/Modal';
+import FormField from '../components/FormField';
+import StatsGrid from '../components/StatsGrid';
+import Badge from '../components/Badge';
+import useForm from '../hooks/useForm';
 import Swal from 'sweetalert2';
 import '../styles/dashboard.css';
 import '../styles/generales.css';
@@ -19,17 +26,21 @@ export default function Proveedores() {
   const [proveedorSeleccionado, setProveedorSeleccionado] = useState(null);
   const [filtro, setFiltro] = useState('TODOS');
   const [busqueda, setBusqueda] = useState('');
-  const [formData, setFormData] = useState({ 
-    nombre: '', 
-    email: '', 
-    telefono: '', 
-    pais: '', 
-    ciudad: '', 
-    activo: true 
+
+  // Usar el hook personalizado para el formulario
+  const { values: formData, handleChange, resetForm } = useForm({
+    nombre: '',
+    email: '',
+    telefono: '',
+    pais: '',
+    ciudad: '',
+    activo: true
   });
 
   const rol = localStorage.getItem('rol');
   const nombre = localStorage.getItem('nombre');
+
+  useEffect(() => { cargar(); }, []);
 
   const cargar = async () => {
     try {
@@ -42,8 +53,6 @@ export default function Proveedores() {
       setLoading(false);
     }
   };
-
-  useEffect(() => { cargar(); }, []);
 
   const eliminar = async (id) => {
     const result = await Swal.fire({
@@ -69,8 +78,8 @@ export default function Proveedores() {
         timer: 2000,
         showConfirmButton: false,
       });
-    } catch (err) { 
-      console.log(err); 
+    } catch (err) {
+      console.log(err);
       Swal.fire({
         icon: 'error',
         title: 'Error',
@@ -81,13 +90,13 @@ export default function Proveedores() {
 
   const abrirModal = (proveedor) => {
     setProveedorSeleccionado(proveedor);
-    setFormData({ 
-      nombre: proveedor.nombre, 
-      email: proveedor.email, 
-      telefono: proveedor.telefono, 
-      pais: proveedor.pais, 
-      ciudad: proveedor.ciudad, 
-      activo: proveedor.activo 
+    resetForm({
+      nombre: proveedor.nombre,
+      email: proveedor.email,
+      telefono: proveedor.telefono,
+      pais: proveedor.pais,
+      ciudad: proveedor.ciudad,
+      activo: proveedor.activo
     });
     setModalAbierto(true);
   };
@@ -96,34 +105,12 @@ export default function Proveedores() {
     setModalAbierto(false);
     setModalNuevo(false);
     setProveedorSeleccionado(null);
-    setFormData({ 
-      nombre: '', 
-      email: '', 
-      telefono: '', 
-      pais: '', 
-      ciudad: '', 
-      activo: true 
-    });
+    resetForm();
   };
 
   const abrirModalNuevo = () => {
-    setFormData({ 
-      nombre: '', 
-      email: '', 
-      telefono: '', 
-      pais: '', 
-      ciudad: '', 
-      activo: true 
-    });
+    resetForm();
     setModalNuevo(true);
-  };
-
-  const handleInputChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    setFormData(prev => ({ 
-      ...prev, 
-      [name]: type === 'checkbox' ? checked : value 
-    }));
   };
 
   const guardarCambios = async () => {
@@ -141,23 +128,21 @@ export default function Proveedores() {
 
     try {
       await api.put(`/proveedores/${proveedorSeleccionado.id}`, formData);
-      setProveedores(p => p.map(x => 
-        x.id === proveedorSeleccionado.id ? { ...x, ...formData } : x
-      ));
+      await cargar();
       cerrarModal();
-      await Swal.fire({
+      Swal.fire({
+        icon: 'success',
         title: '¡Guardado!',
         text: 'Los cambios se guardaron correctamente.',
-        icon: 'success',
         timer: 2000,
         showConfirmButton: false,
       });
     } catch (err) {
       console.log(err);
       Swal.fire({
+        icon: 'error',
         title: 'Error',
         text: 'No se pudieron guardar los cambios.',
-        icon: 'error',
       });
     }
   };
@@ -184,10 +169,10 @@ export default function Proveedores() {
     if (!result.isConfirmed) return;
 
     try {
-      const res = await api.post('/proveedores', formData);
-      setProveedores([...proveedores, res.data]);
+      await api.post('/proveedores', formData);
+      await cargar();
       cerrarModal();
-      await Swal.fire({
+      Swal.fire({
         icon: 'success',
         title: 'Proveedor creado',
         text: 'El proveedor fue creado correctamente.',
@@ -204,23 +189,88 @@ export default function Proveedores() {
     }
   };
 
+  // Filtrado de proveedores
   const proveedoresFiltrados = proveedores.filter(p => {
-    const coincideBusqueda = 
+    const coincideBusqueda =
       p.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
       (p.email && p.email.toLowerCase().includes(busqueda.toLowerCase())) ||
       (p.pais && p.pais.toLowerCase().includes(busqueda.toLowerCase())) ||
       (p.ciudad && p.ciudad.toLowerCase().includes(busqueda.toLowerCase()));
-    const coincideFiltro = filtro === 'TODOS' || 
-      (filtro === 'ACTIVOS' && p.activo) || 
+    
+    const coincideFiltro = filtro === 'TODOS' ||
+      (filtro === 'ACTIVOS' && p.activo) ||
       (filtro === 'INACTIVOS' && !p.activo);
+    
     return coincideBusqueda && coincideFiltro;
   });
 
+  // Contadores para las stats
   const contadores = {
     total: proveedores.length,
     activos: proveedores.filter(p => p.activo).length,
     inactivos: proveedores.filter(p => !p.activo).length,
   };
+
+  // Configuración de columnas para DataTable
+  const columns = [
+    {
+      header: 'Proveedor',
+      render: (p) => (
+        <div className="user-cell">
+          <div className="user-avatar-small">
+            {p.nombre.substring(0, 2).toUpperCase()}
+          </div>
+          <span className="user-name-text">{p.nombre}</span>
+        </div>
+      )
+    },
+    { 
+      header: 'Email', 
+      render: (p) => p.email || 'N/A' 
+    },
+    { 
+      header: 'Teléfono', 
+      render: (p) => p.telefono || 'N/A' 
+    },
+    { 
+      header: 'País', 
+      render: (p) => p.pais || 'N/A' 
+    },
+    { 
+      header: 'Ciudad', 
+      render: (p) => p.ciudad || 'N/A' 
+    },
+    {
+      header: 'Estado',
+      render: (p) => (
+        <Badge type={p.activo ? 'activo' : 'inactivo'}>
+          {p.activo ? 'ACTIVO' : 'INACTIVO'}
+        </Badge>
+      )
+    }
+  ];
+
+  // Configuración de stats para StatsGrid
+  const statsData = [
+    {
+      label: 'Total Proveedores',
+      value: contadores.total,
+      icon: 'fa-truck',
+      iconClass: 'stat-icon-total'
+    },
+    {
+      label: 'Activos',
+      value: contadores.activos,
+      icon: 'fa-circle-check',
+      iconClass: 'stat-icon-activos'
+    },
+    {
+      label: 'Inactivos',
+      value: contadores.inactivos,
+      icon: 'fa-circle-xmark',
+      iconClass: 'stat-icon-inactivos'
+    }
+  ];
 
   if (loading) {
     return (
@@ -228,7 +278,6 @@ export default function Proveedores() {
         <Sidebar rol={rol} />
         <div className="dashboard-content">
           <Header nombre={nombre} rol={rol} />
-          <Subheader status={status} onAgregarClick={abrirModalNuevo} />
           <main className="main-panel">
             <div className="loading-container">
               <div className="spinner"></div>
@@ -244,10 +293,10 @@ export default function Proveedores() {
   return (
     <div className="dashboard-layout">
       <Sidebar rol={rol} />
-      
+
       <div className="dashboard-content">
         <Header nombre={nombre} rol={rol} />
-        <Subheader 
+        <Subheader
           titulo="Gestión de Proveedores"
           busqueda={busqueda}
           onBusquedaChange={setBusqueda}
@@ -260,22 +309,23 @@ export default function Proveedores() {
           ]}
           onAgregarClick={abrirModalNuevo}
         />
-        
+
         <main className="main-panel">
+          {/* Info Section */}
           <div className="info-section">
             <div className="info-item">
               <i className="fa-solid fa-calendar"></i>
               <span className="info-value">
-                {new Date().toLocaleDateString('es-MX', { 
-                  weekday: 'long', 
-                  year: 'numeric', 
-                  month: 'long', 
-                  day: 'numeric' 
+                {new Date().toLocaleDateString('es-MX', {
+                  weekday: 'long',
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric'
                 })}
               </span>
             </div>
             <div className="info-item">
-              <div className={status === 'ok' ? 'status-indicator' : status === 'loading' ? 'status-indicator loading' : 'status-indicator error'}></div>
+              <div className={`status-indicator ${status !== 'ok' ? status : ''}`}></div>
               <span>Sistema:</span>
               <span className="info-value">
                 {status === 'ok' ? 'Operacional' : status === 'loading' ? 'Conectando...' : 'Error'}
@@ -290,38 +340,10 @@ export default function Proveedores() {
             </div>
           </div>
 
-          <div className="stats-grid">
-            <div className="stat-card">
-              <div className="stat-icon stat-icon-total">
-                <i className="fa-solid fa-truck"></i>
-              </div>
-              <div className="stat-content">
-                <div className="stat-value">{contadores.total}</div>
-                <div className="stat-label">Total Proveedores</div>
-              </div>
-            </div>
+          {/* Stats Grid */}
+          <StatsGrid stats={statsData} />
 
-            <div className="stat-card">
-              <div className="stat-icon stat-icon-activos">
-                <i className="fa-solid fa-circle-check"></i>
-              </div>
-              <div className="stat-content">
-                <div className="stat-value">{contadores.activos}</div>
-                <div className="stat-label">Activos</div>
-              </div>
-            </div>
-
-            <div className="stat-card">
-              <div className="stat-icon stat-icon-inactivos">
-                <i className="fa-solid fa-circle-xmark"></i>
-              </div>
-              <div className="stat-content">
-                <div className="stat-value">{contadores.inactivos}</div>
-                <div className="stat-label">Inactivos</div>
-              </div>
-            </div>
-          </div>
-
+          {/* Error Alert */}
           {error && (
             <div className="alert alert-error">
               <i className="fa-solid fa-exclamation-circle"></i>
@@ -329,337 +351,208 @@ export default function Proveedores() {
             </div>
           )}
 
-          <div className="table-container">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Proveedor</th>
-                  <th>Email</th>
-                  <th>Teléfono</th>
-                  <th>País</th>
-                  <th>Ciudad</th>
-                  <th>Estado</th>
-                  <th>Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {proveedoresFiltrados.map(proveedor => (
-                  <tr key={proveedor.id}>
-                    <td>
-                      <div className="user-cell">
-                        <div className="user-avatar-small">
-                          {proveedor.nombre.substring(0, 2).toUpperCase()}
-                        </div>
-                        <span className="user-name-text">{proveedor.nombre}</span>
-                      </div>
-                    </td>
-                    <td>{proveedor.email || 'N/A'}</td>
-                    <td>{proveedor.telefono || 'N/A'}</td>
-                    <td>{proveedor.pais || 'N/A'}</td>
-                    <td>{proveedor.ciudad || 'N/A'}</td>
-                    <td>
-                      <span className={`badge ${proveedor.activo ? 'badge-activo' : 'badge-inactivo'}`}>
-                        {proveedor.activo ? 'ACTIVO' : 'INACTIVO'}
-                      </span>
-                    </td>
-                    <td>
-                      <div className="dropdown">
-                        <button
-                          className="btn btn-sm btn-primary-app dropdown-toggle"
-                          data-bs-toggle="dropdown"
-                          aria-expanded="false"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          Opciones
-                        </button>
-
-                        <ul className="dropdown-menu dropdown-menu-end">
-                          <li>
-                            <button
-                              className="dropdown-item"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                abrirModal(proveedor);
-                              }}
-                            >
-                              <i className="fa-solid fa-eye text-purple me-2"></i>
-                              Ver Detalles
-                            </button>
-                          </li>
-
-                          <li><hr className="dropdown-divider" /></li>
-
-                          <li>
-                            <button
-                              className="dropdown-item text-danger"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                eliminar(proveedor.id);
-                              }}
-                            >
-                              <i className="fa-solid fa-trash text-danger me-2"></i>
-                              Eliminar
-                            </button>
-                          </li>
-                        </ul>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-
-            {proveedoresFiltrados.length === 0 && (
-              <div className="empty-state">
-                <i className="fa-solid fa-truck-slash"></i>
-                <p>No se encontraron proveedores</p>
-              </div>
+          {/* Data Table */}
+          <DataTable
+            data={proveedoresFiltrados}
+            columns={columns}
+            renderActions={(proveedor) => (
+              <DropdownActions
+                items={[
+                  {
+                    label: 'Ver Detalles',
+                    icon: 'fa-eye',
+                    onClick: () => abrirModal(proveedor)
+                  },
+                  { divider: true },
+                  {
+                    label: 'Eliminar',
+                    icon: 'fa-trash',
+                    onClick: () => eliminar(proveedor.id),
+                    danger: true
+                  }
+                ]}
+              />
             )}
-          </div>
+            emptyMessage="No se encontraron proveedores"
+            emptyIcon="fa-truck-slash"
+          />
         </main>
-        
+
         <Footer />
       </div>
 
-      {/* Modal de edición */}
-      {modalAbierto && proveedorSeleccionado && (
-        <div className="modal-overlay" onClick={cerrarModal}>
-          <div className="modal-content modal-content-large" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3>Editar Proveedor</h3>
-              <button className="modal-close" onClick={cerrarModal}>
-                <i className="fa-solid fa-times"></i>
-              </button>
-            </div>
-
-            <div className="modal-body">
-              <div className="user-details-card">
-                <div className="user-avatar-large">
-                  {proveedorSeleccionado.nombre.substring(0, 2).toUpperCase()}
-                </div>
-                <h4>{proveedorSeleccionado.nombre}</h4>
-                <p className="user-email">{proveedorSeleccionado.email || 'Sin email'}</p>
-                
-                <div className="user-badges">
-                  <span className={`badge ${proveedorSeleccionado.activo ? 'badge-activo' : 'badge-inactivo'}`}>
-                    {proveedorSeleccionado.activo ? 'ACTIVO' : 'INACTIVO'}
-                  </span>
-                </div>
-              </div>
-
-              <div className="form-section">
-                <label>ID del Proveedor</label>
-                <input 
-                  type="text" 
-                  value={proveedorSeleccionado.id} 
-                  disabled 
-                  className="input-disabled"
-                />
-              </div>
-
-              <div className="form-section">
-                <label>Nombre *</label>
-                <input 
-                  type="text" 
-                  name="nombre"
-                  value={formData.nombre}
-                  onChange={handleInputChange}
-                  className="select-input"
-                  placeholder="Ingrese el nombre"
-                />
-              </div>
-
-              <div className="form-grid">
-                <div className="form-section">
-                  <label>Email</label>
-                  <input 
-                    type="email" 
-                    name="email"
-                    value={formData.email}
-                    onChange={handleInputChange}
-                    className="select-input"
-                    placeholder="Ingrese el email"
-                  />
-                </div>
-
-                <div className="form-section">
-                  <label>Teléfono</label>
-                  <input 
-                    type="text" 
-                    name="telefono"
-                    value={formData.telefono}
-                    onChange={handleInputChange}
-                    className="select-input"
-                    placeholder="Ingrese el teléfono"
-                  />
-                </div>
-              </div>
-
-              <div className="form-grid">
-                <div className="form-section">
-                  <label>País</label>
-                  <input 
-                    type="text" 
-                    name="pais"
-                    value={formData.pais}
-                    onChange={handleInputChange}
-                    className="select-input"
-                    placeholder="Ingrese el país"
-                  />
-                </div>
-
-                <div className="form-section">
-                  <label>Ciudad</label>
-                  <input 
-                    type="text" 
-                    name="ciudad"
-                    value={formData.ciudad}
-                    onChange={handleInputChange}
-                    className="select-input"
-                    placeholder="Ingrese la ciudad"
-                  />
-                </div>
-              </div>
-
-              <div className="form-section">
-                <label className="checkbox-label">
-                  <input 
-                    type="checkbox" 
-                    name="activo"
-                    checked={formData.activo}
-                    onChange={handleInputChange}
-                    className="checkbox-input"
-                  />
-                  <span>Proveedor Activo</span>
-                </label>
-              </div>
-
-              <div className="form-section">
-                <button 
-                  className="btn btn-primary btn-full"
-                  onClick={guardarCambios}
-                >
-                  <i className="fa-solid fa-save"></i>
-                  Guardar
-                </button>
-              </div>
-            </div>
-
-            <div className="modal-footer">
-              <button 
-                className="btn btn-danger"
-                onClick={() => eliminar(proveedorSeleccionado.id)}
-              >
-                <i className="fa-solid fa-trash"></i>
-                Eliminar
-              </button>
-            </div>
+      {/* Modal de Edición */}
+      <Modal
+        isOpen={modalAbierto && proveedorSeleccionado}
+        onClose={cerrarModal}
+        title="Editar Proveedor"
+        large={true}
+        footer={
+          <>
+            <button className="btn btn-danger" onClick={() => eliminar(proveedorSeleccionado.id)}>
+              <i className="fa-solid fa-trash"></i>
+              Eliminar
+            </button>
+            <button className="btn btn-secondary" onClick={cerrarModal}>
+              <i className="fa-solid fa-times"></i>
+              Cancelar
+            </button>
+            <button className="btn btn-primary" onClick={guardarCambios}>
+              <i className="fa-solid fa-save"></i>
+              Guardar
+            </button>
+          </>
+        }
+      >
+        {/* User Details Card */}
+        <div className="user-details-card">
+          <div className="user-avatar-large">
+            {proveedorSeleccionado?.nombre.substring(0, 2).toUpperCase()}
+          </div>
+          <h4>{proveedorSeleccionado?.nombre}</h4>
+          <p className="user-email">{proveedorSeleccionado?.email || 'Sin email'}</p>
+          <div className="user-badges">
+            <Badge type={proveedorSeleccionado?.activo ? 'activo' : 'inactivo'}>
+              {proveedorSeleccionado?.activo ? 'ACTIVO' : 'INACTIVO'}
+            </Badge>
           </div>
         </div>
-      )}
 
-      {/* Modal de nuevo proveedor */}
-      {modalNuevo && (
-        <div className="modal-overlay" onClick={cerrarModal}>
-          <div className="modal-content modal-content-large" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3>Nuevo Proveedor</h3>
-              <button className="modal-close" onClick={cerrarModal}>
-                <i className="fa-solid fa-times"></i>
-              </button>
-            </div>
+        {/* Formulario */}
+        <FormField
+          label="ID del Proveedor"
+          value={proveedorSeleccionado?.id || ''}
+          disabled={true}
+        />
 
-            <div className="modal-body">
-              <div className="form-section">
-                <label>Nombre *</label>
-                <input 
-                  type="text" 
-                  name="nombre"
-                  value={formData.nombre}
-                  onChange={handleInputChange}
-                  className="select-input"
-                  placeholder="Ingrese el nombre"
-                />
-              </div>
+        <FormField
+          label="Nombre"
+          name="nombre"
+          value={formData.nombre}
+          onChange={handleChange}
+          required
+          placeholder="Ingrese el nombre"
+        />
 
-              <div className="form-grid">
-                <div className="form-section">
-                  <label>Email</label>
-                  <input 
-                    type="email" 
-                    name="email"
-                    value={formData.email}
-                    onChange={handleInputChange}
-                    className="select-input"
-                    placeholder="Ingrese el email"
-                  />
-                </div>
+        <div className="form-grid">
+          <FormField
+            type="email"
+            label="Email"
+            name="email"
+            value={formData.email}
+            onChange={handleChange}
+            placeholder="Ingrese el email"
+          />
 
-                <div className="form-section">
-                  <label>Teléfono</label>
-                  <input 
-                    type="text" 
-                    name="telefono"
-                    value={formData.telefono}
-                    onChange={handleInputChange}
-                    className="select-input"
-                    placeholder="Ingrese el teléfono"
-                  />
-                </div>
-              </div>
-
-              <div className="form-grid">
-                <div className="form-section">
-                  <label>País</label>
-                  <input 
-                    type="text" 
-                    name="pais"
-                    value={formData.pais}
-                    onChange={handleInputChange}
-                    className="select-input"
-                    placeholder="Ingrese el país"
-                  />
-                </div>
-
-                <div className="form-section">
-                  <label>Ciudad</label>
-                  <input 
-                    type="text" 
-                    name="ciudad"
-                    value={formData.ciudad}
-                    onChange={handleInputChange}
-                    className="select-input"
-                    placeholder="Ingrese la ciudad"
-                  />
-                </div>
-              </div>
-
-              <div className="form-section">
-                <label className="checkbox-label">
-                  <input 
-                    type="checkbox" 
-                    name="activo"
-                    checked={formData.activo}
-                    onChange={handleInputChange}
-                    className="checkbox-input"
-                  />
-                  <span>Proveedor Activo</span>
-                </label>
-              </div>
-
-              <div className="form-section">
-                <button 
-                  className="btn btn-primary btn-full"
-                  onClick={crearProveedor}
-                >
-                  <i className="fa-solid fa-plus"></i>
-                  Crear
-                </button>
-              </div>
-            </div>
-          </div>
+          <FormField
+            label="Teléfono"
+            name="telefono"
+            value={formData.telefono}
+            onChange={handleChange}
+            placeholder="Ingrese el teléfono"
+          />
         </div>
-      )}
+
+        <div className="form-grid">
+          <FormField
+            label="País"
+            name="pais"
+            value={formData.pais}
+            onChange={handleChange}
+            placeholder="Ingrese el país"
+          />
+
+          <FormField
+            label="Ciudad"
+            name="ciudad"
+            value={formData.ciudad}
+            onChange={handleChange}
+            placeholder="Ingrese la ciudad"
+          />
+        </div>
+
+        <FormField
+          type="checkbox"
+          label="Proveedor Activo"
+          name="activo"
+          value={formData.activo}
+          onChange={handleChange}
+        />
+      </Modal>
+
+      {/* Modal de Nuevo Proveedor */}
+      <Modal
+        isOpen={modalNuevo}
+        onClose={cerrarModal}
+        title="Nuevo Proveedor"
+        large={true}
+        footer={
+          <>
+            <button className="btn btn-secondary" onClick={cerrarModal}>
+              <i className="fa-solid fa-times"></i>
+              Cancelar
+            </button>
+            <button className="btn btn-primary" onClick={crearProveedor}>
+              <i className="fa-solid fa-plus"></i>
+              Crear
+            </button>
+          </>
+        }
+      >
+        <FormField
+          label="Nombre"
+          name="nombre"
+          value={formData.nombre}
+          onChange={handleChange}
+          required
+          placeholder="Ingrese el nombre"
+        />
+
+        <div className="form-grid">
+          <FormField
+            type="email"
+            label="Email"
+            name="email"
+            value={formData.email}
+            onChange={handleChange}
+            placeholder="Ingrese el email"
+          />
+
+          <FormField
+            label="Teléfono"
+            name="telefono"
+            value={formData.telefono}
+            onChange={handleChange}
+            placeholder="Ingrese el teléfono"
+          />
+        </div>
+
+        <div className="form-grid">
+          <FormField
+            label="País"
+            name="pais"
+            value={formData.pais}
+            onChange={handleChange}
+            placeholder="Ingrese el país"
+          />
+
+          <FormField
+            label="Ciudad"
+            name="ciudad"
+            value={formData.ciudad}
+            onChange={handleChange}
+            placeholder="Ingrese la ciudad"
+          />
+        </div>
+
+        <FormField
+          type="checkbox"
+          label="Proveedor Activo"
+          name="activo"
+          value={formData.activo}
+          onChange={handleChange}
+        />
+      </Modal>
     </div>
   );
 }

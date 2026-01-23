@@ -681,3 +681,4 @@
 .swal2-container { z-index: 3000 !important; }
 .table-wrapper { overflow-x: auto; overflow-y: visible; }
 .page-header { margin-bottom: 0; }
+.checkbox-with-icon { display: flex; align-items: center; gap: 0.75rem; }

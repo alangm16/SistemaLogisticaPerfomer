@@ -23,12 +23,12 @@
   --gray-text: #64748b;
 }
 
-.dashboard-layout {
+/* .dashboard-layout {
   display: flex;
   min-height: 100vh;
   background: var(--gray-light);
   color: var(--black);
-}
+} */
 
 /* SIDEBAR */
 

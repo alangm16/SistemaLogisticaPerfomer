@@ -1,6 +1,7 @@
 package com.performer.logistics.security;
 
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
@@ -8,6 +9,8 @@ import org.springframework.stereotype.Component;
 
 import java.nio.charset.StandardCharsets;
 import java.security.Key;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Date;
 
 @Component
@@ -17,37 +20,37 @@ public class JwtUtil {
             "LASUPERCLAVEQUETIENECOMO32CARACTERESMINIMO12345678.";
     private final long jwtExpirationMs = 86400000; // 1 día
 
-    private Key getSigningKey() {
-        return Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));
-    }
-
     public String generateToken(String email, String rol, String nombre) {
-        return Jwts.builder()
-                .setSubject(email)
-                .claim("rol", rol)
-                .claim("nombre", nombre)
-                .setIssuedAt(new Date())
-                .setExpiration(new Date(System.currentTimeMillis() + jwtExpirationMs))
-                .signWith(getSigningKey(), SignatureAlgorithm.HS256)
-                .compact();
-    }
+        Date now = new Date();
+        Date exp = Date.from(Instant.now().plus(jwtExpirationMs, ChronoUnit.MINUTES));
 
-    public Claims getClaims(String token) {
-        return Jwts.parserBuilder()
-                .setSigningKey(getSigningKey())
-                .build()
-                .parseClaimsJws(token)
-                .getBody();
+        return Jwts.builder()
+                .setSubject(email) 
+                .claim("rol", rol) 
+                .claim("nombre", nombre) 
+                .setIssuedAt(now)
+                .setExpiration(exp)
+                .signWith(Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8)), SignatureAlgorithm.HS256)
+                .compact();
     }
 
     public boolean isTokenValid(String token) {
         try {
-            Claims claims = getClaims(token);
-            System.out.println(">>> JwtUtil: Claims = " + claims);
-            return claims.getExpiration().after(new Date());
-        } catch (Exception e) {
-            System.out.println(">>> JwtUtil: Error validando token = " + e.getMessage());
+            Jwts.parserBuilder()
+                .setSigningKey(Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8)))
+                .build()
+                .parseClaimsJws(token);
+            return true;
+        } catch (JwtException ex) {
             return false;
         }
+    }
+
+    public Claims getClaims(String token) {
+        return Jwts.parserBuilder()
+                .setSigningKey(Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8)))
+                .build()
+                .parseClaimsJws(token)
+                .getBody();
     }
 }

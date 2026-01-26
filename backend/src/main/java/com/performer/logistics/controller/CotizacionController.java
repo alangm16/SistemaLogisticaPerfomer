@@ -1,6 +1,7 @@
 package com.performer.logistics.controller;
 
 import com.performer.logistics.domain.Cotizacion;
+import com.performer.logistics.dto.CotizacionSugerenciaDTO;
 import com.performer.logistics.service.CotizacionService;
 import org.springframework.web.bind.annotation.*;
 
@@ -70,5 +71,20 @@ public class CotizacionController {
     public void eliminar(@PathVariable Long id) {
         cotizacionService.eliminar(id);
     }
-
+    
+    @GetMapping("/sugerencias-avanzadas")
+    @PreAuthorize("hasAnyRole('VENDEDOR', 'PRICING', 'ADMIN')")
+    public List<CotizacionSugerenciaDTO> sugerenciasAvanzadas(@RequestParam Long solicitudId) {
+        return cotizacionService.sugerenciasAvanzadas(solicitudId);
+    }
+    
+    @PostMapping("/reutilizar/{cotizacionId}")
+    @PreAuthorize("hasAnyRole('VENDEDOR', 'PRICING', 'ADMIN')")
+    public Cotizacion reutilizarCotizacion(
+            @PathVariable Long cotizacionId,
+            @RequestParam Long nuevaSolicitudId,
+            @RequestParam(required = false) Double nuevoCosto) {
+        
+        return cotizacionService.reutilizarCotizacion(cotizacionId, nuevaSolicitudId, nuevoCosto);
+    }
 }

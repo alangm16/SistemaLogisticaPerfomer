@@ -1,4 +1,4 @@
-// src/pages/Cotizaciones/NuevaCotizacion.jsx - VERSIÓN OPTIMIZADA
+// src/pages/Cotizaciones/NuevaCotizacion.jsx
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../../services/api';
@@ -6,6 +6,7 @@ import Sidebar from '../../components/Sidebar';
 import Header from '../../components/Header';
 import Footer from '../../components/Footer';
 import FormField from '../../components/FormField';
+import SugerenciasCotizacion from '../../components/SugerenciasCotizacion';
 import Swal from 'sweetalert2';
 import '../../styles/dashboard.css';
 import '../../styles/cotizaciones.css';
@@ -66,6 +67,47 @@ export default function NuevaCotizacion() {
   const cambiarTipoTransporte = (tipo) => {
     setTipoTransporteActivo(tipo);
     setFormData(prev => ({ ...prev, tipoTransporte: tipo }));
+  };
+
+  const handleReutilizarSugerencia = (sugerencia) => {
+    // Buscar el proveedor por nombre
+    const proveedor = proveedores.find(p => 
+      p.nombre.toLowerCase() === sugerencia.proveedorNombre.toLowerCase()
+    );
+    
+    if (!proveedor) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Proveedor no encontrado',
+        text: `No se encontró el proveedor "${sugerencia.proveedorNombre}" en la lista. Por favor, selecciónalo manualmente.`,
+      });
+      return;
+    }
+
+    // Actualizar el formulario con los datos de la sugerencia
+    setFormData(prev => ({
+      ...prev,
+      proveedorId: proveedor.id,
+      tipoTransporte: sugerencia.tipoTransporte,
+      origen: sugerencia.origen,
+      destino: sugerencia.destino,
+      tipoUnidad: sugerencia.tipoUnidad || '',
+      tiempoEstimado: sugerencia.tiempoEstimado || '',
+      costo: sugerencia.costo,
+      // validoHasta se mantiene como estaba (no está en el DTO)
+    }));
+
+    // Cambiar la pestaña activa al tipo de transporte de la sugerencia
+    setTipoTransporteActivo(sugerencia.tipoTransporte);
+
+    // Mostrar mensaje de éxito
+    Swal.fire({
+      icon: 'success',
+      title: 'Datos cargados',
+      text: 'Los datos de la sugerencia se han cargado en el formulario. Revisa y ajusta los campos necesarios.',
+      timer: 2000,
+      showConfirmButton: false,
+    });
   };
 
   const crearCotizacion = async () => {
@@ -335,6 +377,14 @@ export default function NuevaCotizacion() {
                 options={estadoOptions}
               />
             </div>
+
+            {/* Sección de Sugerencias - Solo si hay una solicitud seleccionada */}
+            {formData.solicitudId && (
+              <SugerenciasCotizacion
+                solicitudId={formData.solicitudId}
+                onReutilizar={handleReutilizarSugerencia}
+              />
+            )}
 
             <div className="modal-footer">
               <ActionButton

@@ -1,6 +1,5 @@
 package com.performer.logistics.service;
 
-import com.performer.logistics.domain.Cliente;
 import com.performer.logistics.domain.Empleado;
 import com.performer.logistics.domain.Historial;
 import com.performer.logistics.domain.Solicitud;
@@ -38,42 +37,55 @@ public class SolicitudService {
     }
 
     public Solicitud guardar(Solicitud solicitud) {
-
-        // Obtener usuario autenticado
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         String email = auth.getName();
-
         Empleado usuario = empleadoRepository.findByEmail(email)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Empleado no encontrado para el email: " + email));
 
-        // Generar folio
-        String empresa = solicitud.getEmpresaCodigo();
-        int year = Year.now().getValue();
+        boolean esNueva = solicitud.getId() == null;
+        Solicitud.Estado estadoAnterior = null;
 
-        long count = solicitudRepository.countByEmpresaCodigoAndYear(empresa, year) + 1;
+        if (!esNueva) {
+            Solicitud existente = solicitudRepository.findById(solicitud.getId()).orElse(null);
+            if (existente != null) {
+                estadoAnterior = existente.getEstado();
+            }
+        }
 
-        String folio = String.format("%s-%05d-%d", empresa, count, year);
+        // Generar folio si es nueva
+        if (esNueva) {
+            String empresa = solicitud.getEmpresaCodigo();
+            int year = Year.now().getValue();
+            long count = solicitudRepository.countByEmpresaCodigoAndYear(empresa, year) + 1;
+            String folio = String.format("%s-%05d-%d", empresa, count, year);
+            solicitud.setFolioCodigo(folio);
+            solicitud.setCreadoPor(usuario);
+            solicitud.setCreadoEn(LocalDateTime.now());
+        }
 
-        solicitud.setFolioCodigo(folio);
-
-        // Setear auditoría
-        solicitud.setCreadoPor(usuario);
-        solicitud.setCreadoEn(LocalDateTime.now());
-        solicitud.setEstado(Solicitud.Estado.PENDIENTE);
-
-        // Guardar
         Solicitud s = solicitudRepository.save(solicitud);
 
-        // Historial
-        historialService.guardar(Historial.builder()
-                .entidadTipo(Historial.EntidadTipo.SOLICITUD)
-                .entidadId(s.getId())
-                .accion("CREADO")
-                .detalle("Solicitud creada con folio " + s.getFolioCodigo())
-                .usuario(usuario)
-                .timestamp(LocalDateTime.now())
-                .build());
+        // Registrar en historial
+        if (esNueva) {
+            historialService.registrar(
+                Historial.EntidadTipo.SOLICITUD,
+                s.getId(),
+                "CREADO",
+                String.format("{\"folio\":\"%s\",\"cliente\":\"%s\",\"tipo_servicio\":\"%s\"}",
+                    s.getFolioCodigo(), s.getCliente().getNombre(), s.getTipoServicio()),
+                usuario.getId()
+            );
+        } else if (estadoAnterior != null && !estadoAnterior.equals(s.getEstado())) {
+            historialService.registrar(
+                Historial.EntidadTipo.SOLICITUD,
+                s.getId(),
+                "ESTADO_CAMBIADO",
+                String.format("{\"estado_anterior\":\"%s\",\"estado_nuevo\":\"%s\"}",
+                    estadoAnterior, s.getEstado()),
+                usuario.getId()
+            );
+        }
 
         return s;
     }

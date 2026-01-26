@@ -6,6 +6,7 @@ import com.performer.logistics.domain.Historial;
 import com.performer.logistics.domain.Proveedor;
 import com.performer.logistics.domain.Solicitud;
 import com.performer.logistics.dto.CotizacionSugerenciaDTO;
+import com.performer.logistics.exception.BadRequestException;
 import com.performer.logistics.exception.ResourceNotFoundException;
 import com.performer.logistics.repository.CotizacionRepository;
 import com.performer.logistics.repository.EmpleadoRepository;
@@ -14,10 +15,12 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -43,24 +46,100 @@ public class CotizacionService {
     }
 
     public Cotizacion guardar(Cotizacion cotizacion) {
-        // Obtener usuario autenticado
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         String email = auth.getName();
-
         Empleado usuario = empleadoRepository.findByEmail(email)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Empleado no encontrado para el email: " + email));
-        
+
+        // Si es una cotización existente, verificar si cambió el estado
+        if (cotizacion.getId() != null) {
+            Cotizacion existente = cotizacionRepository.findById(cotizacion.getId()).orElse(null);
+            if (existente != null && !existente.getEstado().equals(cotizacion.getEstado())) {
+                // Registrar cambio de estado en historial
+                historialService.registrar(
+                    Historial.EntidadTipo.COTIZACION,
+                    cotizacion.getId(),
+                    "ESTADO_CAMBIADO",
+                    String.format("{\"estado_anterior\":\"%s\",\"estado_nuevo\":\"%s\"}", 
+                        existente.getEstado(), cotizacion.getEstado()),
+                    usuario.getId()
+                );
+            }
+        }
+
         Cotizacion c = cotizacionRepository.save(cotizacion);
-        historialService.guardar(Historial.builder()
-                .entidadTipo(Historial.EntidadTipo.COTIZACION)
-                .entidadId(c.getId())
-                .accion("CREADO")
-                .detalle("Cotización creada para solicitud " + c.getSolicitud().getId())
-                .usuario(usuario)
-                .timestamp(LocalDateTime.now())
-                .build());
+
+        // Registrar creación si es nueva
+        if (cotizacion.getId() == null) {
+            historialService.registrar(
+                Historial.EntidadTipo.COTIZACION,
+                c.getId(),
+                "CREADO",
+                "Cotización creada",
+                usuario.getId()
+            );
+        }
+
         return c;
+    }
+
+    // Nuevo método para cambiar estado con validación de workflow
+    public Cotizacion cambiarEstado(Long id, Cotizacion.Estado nuevoEstado, Empleado usuario) {
+        Cotizacion cotizacion = buscarPorId(id);
+        Cotizacion.Estado estadoAnterior = cotizacion.getEstado();
+
+        // Validar transición de estado permitida
+        if (!validarTransicionEstado(estadoAnterior, nuevoEstado)) {
+            throw new BadRequestException(
+                String.format("Transición de estado no permitida: %s -> %s", 
+                    estadoAnterior, nuevoEstado)
+            );
+        }
+
+        cotizacion.setEstado(nuevoEstado);
+        Cotizacion actualizada = cotizacionRepository.save(cotizacion);
+
+        // Registrar en historial
+        historialService.registrar(
+            Historial.EntidadTipo.COTIZACION,
+            id,
+            "ESTADO_CAMBIADO",
+            String.format("{\"estado_anterior\":\"%s\",\"estado_nuevo\":\"%s\",\"comentario\":\"Cambio manual de estado\"}",
+                estadoAnterior, nuevoEstado),
+            usuario.getId()
+        );
+
+        return actualizada;
+    }
+
+    // Método para validar transiciones de estado
+    private boolean validarTransicionEstado(Cotizacion.Estado actual, Cotizacion.Estado nuevo) {
+        // Workflow: PENDIENTE -> ENVIADO -> COMPLETADO
+        //            PENDIENTE -> CANCELADO (en cualquier momento)
+        Map<Cotizacion.Estado, List<Cotizacion.Estado>> transicionesPermitidas = Map.of(
+            Cotizacion.Estado.PENDIENTE, Arrays.asList(
+                Cotizacion.Estado.ENVIADO, 
+                Cotizacion.Estado.CANCELADO
+            ),
+            Cotizacion.Estado.ENVIADO, Arrays.asList(
+                Cotizacion.Estado.COMPLETADO,
+                Cotizacion.Estado.CANCELADO
+            ),
+            Cotizacion.Estado.COMPLETADO, Arrays.asList(), // No se puede cambiar desde completado
+            Cotizacion.Estado.CANCELADO, Arrays.asList()   // No se puede cambiar desde cancelado
+        );
+
+        return transicionesPermitidas.getOrDefault(actual, new ArrayList<>())
+                .contains(nuevo);
+    }
+
+    // Método para obtener historial completo de una cotización
+    public List<Historial> obtenerHistorialCotizacion(Long cotizacionId) {
+        return historialService.listarPorEntidad(
+            Historial.EntidadTipo.COTIZACION, 
+            cotizacionId
+        );
     }
 
     public List<Cotizacion> listarPorSolicitud(Long solicitudId) {

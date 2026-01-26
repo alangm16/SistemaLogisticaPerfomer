@@ -1,16 +1,23 @@
 package com.performer.logistics.controller;
 
+import com.performer.logistics.domain.Cotizacion;
 import com.performer.logistics.domain.Empleado;
+import com.performer.logistics.domain.Historial;
 import com.performer.logistics.domain.Solicitud;
 import com.performer.logistics.dto.SolicitudDTO;
 import com.performer.logistics.mapper.SolicitudMapper;
+import com.performer.logistics.service.CotizacionService;
 import com.performer.logistics.service.SolicitudService;
 import com.performer.logistics.service.EmpleadoService;
+import com.performer.logistics.service.HistorialService;
+import java.util.ArrayList;
+import java.util.HashMap;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/solicitudes")
@@ -18,10 +25,14 @@ public class SolicitudController {
 
     private final SolicitudService solicitudService;
     private final EmpleadoService empleadoService;
+    private final HistorialService historialService;
+    private final CotizacionService cotizacionService;
 
-    public SolicitudController(SolicitudService solicitudService, EmpleadoService empleadoService) {
+    public SolicitudController(SolicitudService solicitudService, EmpleadoService empleadoService, HistorialService historialService, CotizacionService cotizacionService) {
         this.solicitudService = solicitudService;
         this.empleadoService = empleadoService;
+        this.historialService = historialService;
+        this.cotizacionService = cotizacionService;
     }
 
     @GetMapping 
@@ -77,12 +88,6 @@ public class SolicitudController {
     public List<SolicitudDTO> listarAsignadas(@PathVariable Long empleadoId) {
         return solicitudService.listarAsignadas(empleadoId).stream().map(SolicitudMapper::toDTO).toList();
     }
-
-//    @PreAuthorize("hasAnyRole('VENDEDOR','PRICING','ADMIN')")
-//    @GetMapping("/mis/{empleadoId}")
-//    public List<SolicitudDTO> listarMisSolicitudes(@PathVariable Long empleadoId) {
-//        return solicitudService.listarMisSolicitudes(empleadoId).stream().map(SolicitudMapper::toDTO).toList();
-//    }
     
     @PutMapping("/{id}/asignar")
     @PreAuthorize("hasAnyRole('PRICING','ADMIN')")
@@ -114,5 +119,44 @@ public class SolicitudController {
                 .stream()
                 .map(SolicitudMapper::toDTO)
                 .toList();
+    }
+    
+    @GetMapping("/{id}/historial-completo")
+    @PreAuthorize("hasAnyRole('VENDEDOR', 'PRICING', 'ADMIN')")
+    public Map<String, Object> obtenerHistorialCompleto(@PathVariable Long id) {
+        Solicitud solicitud = solicitudService.obtenerPorId(id);
+
+        // Obtener historial de la solicitud
+        List<Historial> historialSolicitud = historialService.listarPorEntidad(
+            Historial.EntidadTipo.SOLICITUD, id
+        );
+
+        // Obtener historial de las cotizaciones asociadas
+        List<Cotizacion> cotizaciones = cotizacionService.listarPorSolicitud(id);
+        List<Map<String, Object>> historialCotizaciones = new ArrayList<>();
+
+        for (Cotizacion cotizacion : cotizaciones) {
+            List<Historial> histCot = historialService.listarPorEntidad(
+                Historial.EntidadTipo.COTIZACION, cotizacion.getId()
+            );
+
+            Map<String, Object> cotHist = new HashMap<>();
+            cotHist.put("cotizacionId", cotizacion.getId());
+            cotHist.put("proveedor", cotizacion.getProveedor().getNombre());
+            cotHist.put("estado", cotizacion.getEstado());
+            cotHist.put("historial", histCot);
+            historialCotizaciones.add(cotHist);
+        }
+
+        Map<String, Object> resultado = new HashMap<>();
+        resultado.put("solicitud", SolicitudMapper.toDTO(solicitud));
+        resultado.put("historialSolicitud", historialSolicitud);
+        resultado.put("cotizacionesConHistorial", historialCotizaciones);
+        resultado.put("totalEventos", historialSolicitud.size() + 
+            historialCotizaciones.stream()
+                .mapToInt(c -> ((List<?>) c.get("historial")).size())
+                .sum());
+
+        return resultado;
     }
 }

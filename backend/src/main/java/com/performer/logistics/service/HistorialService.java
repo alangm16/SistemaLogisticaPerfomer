@@ -1,5 +1,7 @@
 package com.performer.logistics.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.performer.logistics.domain.Empleado;
 import com.performer.logistics.domain.Historial;
 import com.performer.logistics.exception.ResourceNotFoundException;
@@ -8,7 +10,10 @@ import com.performer.logistics.repository.HistorialRepository;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 public class HistorialService {
@@ -58,5 +63,40 @@ public class HistorialService {
                 .timestamp(LocalDateTime.now()) 
                 .build(); 
         historialRepository.save(h); 
+    }
+    
+    public void registrarCambioDetallado(
+        Historial.EntidadTipo tipo,
+        Long entidadId,
+        String accion,
+        Map<String, Object> cambios,
+        Long usuarioId) {
+
+        String detalleJson;
+        try {
+            detalleJson = new ObjectMapper().writeValueAsString(cambios);
+        } catch (JsonProcessingException e) {
+            detalleJson = "{\"error\":\"No se pudieron serializar los cambios\"}";
+        }
+
+        registrar(tipo, entidadId, accion, detalleJson, usuarioId);
+    }
+
+    // Método para obtener historial filtrado por acción y rango de fechas
+    public List<Historial> obtenerHistorialFiltrado(
+        Historial.EntidadTipo tipo,
+        Long entidadId,
+        String accion,
+        LocalDateTime fechaDesde,
+        LocalDateTime fechaHasta) {
+
+        List<Historial> historial = listarPorEntidad(tipo, entidadId);
+
+        return historial.stream()
+            .filter(h -> accion == null || h.getAccion().equals(accion))
+            .filter(h -> fechaDesde == null || !h.getTimestamp().isBefore(fechaDesde))
+            .filter(h -> fechaHasta == null || !h.getTimestamp().isAfter(fechaHasta))
+            .sorted(Comparator.comparing(Historial::getTimestamp).reversed())
+            .collect(Collectors.toList());
     }
 }

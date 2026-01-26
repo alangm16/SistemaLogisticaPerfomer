@@ -1,21 +1,27 @@
 package com.performer.logistics.controller;
 
 import com.performer.logistics.domain.Cotizacion;
+import com.performer.logistics.domain.Empleado;
+import com.performer.logistics.domain.Historial;
 import com.performer.logistics.dto.CotizacionSugerenciaDTO;
 import com.performer.logistics.service.CotizacionService;
+import com.performer.logistics.service.EmpleadoService;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 
 @RestController
 @RequestMapping("/api/cotizaciones")
 public class CotizacionController {
 
     private final CotizacionService cotizacionService;
-
-    public CotizacionController(CotizacionService cotizacionService) {
+    private final EmpleadoService empleadoService;
+    
+    public CotizacionController(CotizacionService cotizacionService, EmpleadoService empleadoService ) {
         this.cotizacionService = cotizacionService;
+        this.empleadoService = empleadoService;
     }
 
     @PreAuthorize("hasAnyRole('VENDEDOR','PRICING','ADMIN')") 
@@ -86,5 +92,24 @@ public class CotizacionController {
             @RequestParam(required = false) Double nuevoCosto) {
         
         return cotizacionService.reutilizarCotizacion(cotizacionId, nuevaSolicitudId, nuevoCosto);
+    }
+    
+    @PutMapping("/{id}/estado")
+    @PreAuthorize("hasAnyRole('PRICING', 'ADMIN')")
+    public Cotizacion cambiarEstado(
+        @PathVariable Long id,
+        @RequestParam Cotizacion.Estado estado,
+        Authentication authentication) {
+
+        String email = authentication.getName();
+        Empleado usuario = empleadoService.buscarPorEmail(email);
+
+        return cotizacionService.cambiarEstado(id, estado, usuario);
+    }
+
+    @GetMapping("/{id}/historial")
+    @PreAuthorize("hasAnyRole('VENDEDOR', 'PRICING', 'ADMIN')")
+    public List<Historial> obtenerHistorial(@PathVariable Long id) {
+        return cotizacionService.obtenerHistorialCotizacion(id);
     }
 }

@@ -1,9 +1,10 @@
 // src/components/Sidebar.jsx
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import '../styles/dashboard.css';
 
 export default function Sidebar({ rol }) {
   const location = useLocation();
+  const navigate = useNavigate();
 
   // Configuración de módulos por rol - DEBEN COINCIDIR CON MainContent
   const modulosPorRol = {
@@ -33,9 +34,13 @@ export default function Sidebar({ rol }) {
 
   const modulos = modulosPorRol[rol] || [];
 
+  const goToDashboard = () => {
+    navigate('/dashboard');
+  };
+  
   return (
     <aside className="sidebar">
-      <div className="sidebar-logo">
+      <div className="sidebar-logo" onClick={goToDashboard} style={{ cursor: 'pointer' }}>
         <div className="sidebar-logo-icon">
           <i className="fa-solid fa-ship"></i>
         </div>

@@ -11,6 +11,8 @@ import DropdownActions from '../../components/DropdownActions';
 import Modal from '../../components/Modal';
 import Badge from '../../components/Badge';
 import StatsGrid from '../../components/StatsGrid';
+import HistorialModal from '../../components/HistorialModal';
+import useWorkflow from '../../hooks/useWorkflow';
 import Swal from 'sweetalert2';
 import authHeader from '../../services/authHeader';
 import '../../styles/dashboard.css';
@@ -26,13 +28,25 @@ export default function MisSolicitudes() {
   const [busqueda, setBusqueda] = useState('');
   const [modalDetalle, setModalDetalle] = useState(false);
   const [solicitudSeleccionada, setSolicitudSeleccionada] = useState(null);
-  
+  const [modalHistorial, setModalHistorial] = useState(false);
+  const [entidadHistorial, setEntidadHistorial] = useState({ tipo: '', id: null });
   const rol = localStorage.getItem('rol');
   const nombre = localStorage.getItem('nombre');
-
+  const { validarTransicion } = useWorkflow();
   useEffect(() => {
     cargarSolicitudes();
   }, []);
+
+  // Función para abrir historial
+  const abrirHistorial = (solicitud) => {
+    setEntidadHistorial({
+      tipo: 'SOLICITUD',
+      id: solicitud.id,
+      titulo: `Historial - ${solicitud.folioCodigo}`
+    });
+    setModalHistorial(true);
+  };
+
 
   const cargarSolicitudes = async () => {
     try {
@@ -91,6 +105,19 @@ export default function MisSolicitudes() {
   };
 
   const cambiarEstado = async (id, nuevoEstado) => {
+    // Validar workflow
+    const entidad = location.pathname.includes('cotizaciones') ? 'COTIZACION' : 'SOLICITUD';
+    const estadoActual = solicitudes.find(s => s.id === id)?.estado;
+    
+    if (!validarTransicion(entidad, estadoActual, nuevoEstado)) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Transición no permitida',
+        text: `No se puede cambiar de ${estadoActual} a ${nuevoEstado}`,
+      });
+      return;
+    }
+    
     const result = await Swal.fire({
       title: '¿Cambiar estado?',
       text: `¿Deseas cambiar el estado a ${nuevoEstado}?`,
@@ -252,6 +279,11 @@ export default function MisSolicitudes() {
         label: 'Ver Detalles',
         icon: 'fa-eye',
         onClick: () => abrirDetalle(solicitud)
+      },
+      {
+        label: 'Ver Historial',
+        icon: 'fa-history',
+        onClick: () => abrirHistorial(solicitud)
       }
     ];
 
@@ -540,6 +572,13 @@ export default function MisSolicitudes() {
           </>
         )}
       </Modal>
+      <HistorialModal
+        isOpen={modalHistorial}
+        onClose={() => setModalHistorial(false)}
+        tipoEntidad={entidadHistorial.tipo}
+        entidadId={entidadHistorial.id}
+        titulo={entidadHistorial.titulo}
+      />
     </div>
   );
 }

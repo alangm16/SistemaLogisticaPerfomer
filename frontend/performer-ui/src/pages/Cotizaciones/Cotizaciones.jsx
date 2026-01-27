@@ -10,6 +10,8 @@ import DataTable from '../../components/DataTable';
 import DropdownActions from '../../components/DropdownActions';
 import StatsGrid from '../../components/StatsGrid';
 import Badge from '../../components/Badge';
+import HistorialModal from '../../components/HistorialModal';
+import useWorkflow from '../../hooks/useWorkflow';
 import Swal from 'sweetalert2';
 import '../../styles/dashboard.css';
 import '../../styles/cotizaciones.css';
@@ -22,13 +24,26 @@ export default function Cotizaciones() {
   const [error, setError] = useState(null);
   const [filtro, setFiltro] = useState('TODAS');
   const [busqueda, setBusqueda] = useState('');
+  const [modalHistorial, setModalHistorial] = useState(false);
+  const [entidadHistorial, setEntidadHistorial] = useState({tipo: '', id:null});
 
+  const { validarTransicion } = useWorkflow();
   const rol = localStorage.getItem('rol');
   const nombre = localStorage.getItem('nombre');
 
   useEffect(() => {
     cargar();
   }, []);
+
+  // Función para abrir historial de cotización
+  const abrirHistorial = (cotizacion) => {
+    setEntidadHistorial({
+      tipo: 'COTIZACION',
+      id: cotizacion.id,
+      titulo: `Historial - Cotización #${cotizacion.id}`
+    });
+    setModalHistorial(true);
+  };
 
   const cargar = async () => {
     try {
@@ -78,6 +93,19 @@ export default function Cotizaciones() {
 
   const cambiarEstado = async (id, nuevoEstado) => {
     try {
+
+      // Validar workflow
+      const entidad = location.pathname.includes('cotizaciones') ? 'COTIZACION' : 'SOLICITUD';
+      const estadoActual = cotizaciones.find(s => s.id === id)?.estado;
+      
+      if (!validarTransicion(entidad, estadoActual, nuevoEstado)) {
+        Swal.fire({
+          icon: 'error',
+          title: 'Transición no permitida',
+          text: `No se puede cambiar de ${estadoActual} a ${nuevoEstado}`,
+        });
+        return;
+      }
       const cotizacion = cotizaciones.find(c => c.id === id);
       const payload = {
         ...cotizacion,
@@ -238,6 +266,11 @@ export default function Cotizaciones() {
         label: 'Ver Detalles',
         icon: 'fa-eye',
         onClick: () => navigate(`/cotizaciones/${cotizacion.id}`)
+      },
+      {
+        label: 'Ver Historial',
+        icon: 'fa-history',
+        onClick: () => abrirHistorial(cotizacion)
       }
     ];
 
@@ -369,6 +402,14 @@ export default function Cotizaciones() {
         </main>
         <Footer />
       </div>
+      {/* Modal de Historial */}
+      <HistorialModal
+        isOpen={modalHistorial}
+        onClose={() => setModalHistorial(false)}
+        tipoEntidad={entidadHistorial.tipo}
+        entidadId={entidadHistorial.id}
+        titulo={entidadHistorial.titulo}
+      />
     </div>
   );
 }

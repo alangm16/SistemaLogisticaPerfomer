@@ -7,10 +7,13 @@ import Header from '../../components/Header';
 import Footer from '../../components/Footer';
 import Badge from '../../components/Badge';
 import FormField from '../../components/FormField';
+import HistorialModal from '../../components/HistorialModal';
+import useWorkflow from '../../hooks/useWorkflow';
 import Swal from 'sweetalert2';
 import '../../styles/dashboard.css';
 import '../../styles/cotizaciones.css';
 import '../../styles/generales.css';
+import Cotizaciones from './Cotizaciones';
 
 export default function DetallesCotizacion() {
   const navigate = useNavigate();
@@ -18,6 +21,7 @@ export default function DetallesCotizacion() {
   const [cotizacion, setCotizacion] = useState(null);
   const [loading, setLoading] = useState(true);
   const [modoEdicion, setModoEdicion] = useState(false);
+  const [modalHistorial, setModalHistorial] = useState(false);
   const [formData, setFormData] = useState({
     origen: '',
     destino: '',
@@ -29,6 +33,8 @@ export default function DetallesCotizacion() {
     margenGananciaPct: '',
     estado: ''
   });
+
+  const { validarTransicion } = useWorkflow();
 
   const rol = localStorage.getItem('rol');
   const nombre = localStorage.getItem('nombre');
@@ -126,6 +132,19 @@ export default function DetallesCotizacion() {
 
   const cambiarEstado = async (nuevoEstado) => {
     try {
+
+    // Validar workflow
+    const entidad = location.pathname.includes('cotizaciones') ? 'COTIZACION' : 'SOLICITUD';
+    const estadoActual = cotizacion.find(s => s.id === id)?.estado;
+    
+    if (!validarTransicion(entidad, estadoActual, nuevoEstado)) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Transición no permitida',
+        text: `No se puede cambiar de ${estadoActual} a ${nuevoEstado}`,
+      });
+      return;
+    }
       const payload = { ...cotizacion, estado: nuevoEstado };
       await api.put(`/cotizaciones/${id}`, payload);
       await cargarCotizacion();
@@ -210,6 +229,17 @@ export default function DetallesCotizacion() {
       <span className="header-detail-label">{label}</span>
       <span className="header-detail-value">{value}</span>
     </div>
+  );
+
+  const ActionButtonHistorial = () => (
+    <button 
+      className="btn btn-secondary"
+      onClick={() => setModalHistorial(true)}
+      style={{ marginLeft: 'auto' }}
+    >
+      <i className="fa-solid fa-history"></i>
+      Ver Historial Completo
+    </button>
   );
 
   const ActionButton = ({ onClick, icon, label, type = 'primary' }) => (
@@ -383,6 +413,9 @@ export default function DetallesCotizacion() {
                   icon="fa-edit" 
                   label="Editar" 
                 />
+
+                {/* Botón de Historial */ }
+                <ActionButtonHistorial />
                 
                 {cotizacion.estado === 'PENDIENTE' && (
                   <ActionButton 
@@ -441,6 +474,14 @@ export default function DetallesCotizacion() {
         </main>
         <Footer />
       </div>
+      {/* Modal de Historial */}
+      <HistorialModal
+        isOpen={modalHistorial}
+        onClose={() => setModalHistorial(false)}
+        tipoEntidad="COTIZACION"
+        entidadId={id}
+        titulo={`Historial Completo - Cotización #${id}`}
+      />
     </div>
   );
 }

@@ -1,0 +1,136 @@
+/* Agregar al final del archivo generales.css */
+
+/* HISTORIAL TIMELINE */
+.historial-timeline {
+  position: relative;
+  padding-left: 2rem;
+}
+
+.historial-timeline::before {
+  content: '';
+  position: absolute;
+  left: 1rem;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: linear-gradient(180deg, var(--purple-main) 0%, var(--purple-light) 100%);
+  opacity: 0.3;
+}
+
+.timeline-item {
+  position: relative;
+  margin-bottom: 1.5rem;
+  padding-left: 1rem;
+}
+
+.timeline-marker {
+  position: absolute;
+  left: -1.9rem;
+  top: 0;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  background: white;
+  border: 3px solid var(--purple-main);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--purple-main);
+  z-index: 1;
+}
+
+.timeline-marker i {
+  font-size: 0.9rem;
+}
+
+.timeline-content {
+  background: var(--gray-light);
+  border-radius: 10px;
+  padding: 1.25rem;
+  border: 1px solid var(--gray-border);
+  transition: all 0.2s ease;
+}
+
+.timeline-content:hover {
+  transform: translateX(5px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.timeline-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.timeline-action .badge {
+  font-size: 0.7rem;
+  padding: 0.3rem 0.7rem;
+}
+
+.timeline-date {
+  font-size: 0.8rem;
+  color: var(--gray-text);
+  font-weight: 600;
+}
+
+.timeline-body {
+  font-size: 0.9rem;
+}
+
+.timeline-detail {
+  margin-bottom: 0.5rem;
+  display: flex;
+  gap: 0.5rem;
+}
+
+.timeline-detail strong {
+  color: var(--purple-dark);
+  min-width: 70px;
+}
+
+/* RESUMEN DE HISTORIAL */
+.historial-resumen {
+  background: linear-gradient(135deg, var(--gray-light) 0%, #eef1f9 100%);
+  border-radius: 10px;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+  border: 2px solid var(--gray-border);
+}
+
+.resumen-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.resumen-item {
+  text-align: center;
+  padding: 1rem;
+  background: white;
+  border-radius: 8px;
+  border: 1px solid var(--gray-border);
+}
+
+.resumen-label {
+  font-size: 0.8rem;
+  color: var(--gray-text);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 0.5rem;
+  font-weight: 700;
+}
+
+.resumen-value {
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: var(--purple-dark);
+}
+
+/* BADGE PARA ACCIONES DE HISTORIAL */
+.badge-info {
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+  color: #1e40af;
+}

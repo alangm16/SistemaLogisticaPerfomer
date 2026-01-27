@@ -41,12 +41,21 @@ export default function Header({ nombre, rol }) {
     return nombre.substring(0, 2).toUpperCase();
   };
 
+  // Navegar a Dashboard
+  const goToDashboard = () => {
+    navigate('/dashboard');
+  };
+
   return (
     <header className="header">
       <div className="header-left">
         <h1 className="header-title">{getTituloPagina()}</h1>
         <div className="header-breadcrumb">
-          <i className="fa-solid fa-house"></i>
+          <i 
+            className="fa-solid fa-house" 
+            onClick={goToDashboard}
+            style={{ cursor: 'pointer'}}
+            title="Ir al Dashboard"></i>
           <span>/</span>
           <span>{getTituloPagina()}</span>
         </div>

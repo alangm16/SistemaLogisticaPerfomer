@@ -10,6 +10,8 @@ import DropdownActions from '../../components/DropdownActions';
 import Modal from '../../components/Modal';
 import StatsGrid from '../../components/StatsGrid';
 import Badge from '../../components/Badge';
+import HistorialModal from '../../components/HistorialModal';
+import useWorkflow from '../../hooks/useWorkflow';
 import Swal from 'sweetalert2';
 import authHeader from '../../services/authHeader';
 import '../../styles/dashboard.css';
@@ -24,6 +26,14 @@ export default function SolicitudesAsignadas() {
   const [busqueda, setBusqueda] = useState('');
   const [modalDetalle, setModalDetalle] = useState(false);
   const [solicitudSeleccionada, setSolicitudSeleccionada] = useState(null);
+  const { validarTransicion } = useWorkflow();
+  // NUEVOS ESTADOS PARA HISTORIAL
+  const [modalHistorial, setModalHistorial] = useState(false);
+  const [entidadHistorial, setEntidadHistorial] = useState({ 
+    tipo: '', 
+    id: null, 
+    titulo: '' 
+  });
   
   const rol = localStorage.getItem('rol');
   const nombre = localStorage.getItem('nombre');
@@ -42,6 +52,16 @@ export default function SolicitudesAsignadas() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // NUEVA FUNCIÓN PARA ABRIR HISTORIAL
+  const abrirHistorial = (solicitud) => {
+    setEntidadHistorial({
+      tipo: 'SOLICITUD',
+      id: solicitud.id,
+      titulo: `Historial - ${solicitud.folioCodigo || `Solicitud #${solicitud.id}`}`
+    });
+    setModalHistorial(true);
   };
 
   // Filtrado de solicitudes
@@ -79,6 +99,19 @@ export default function SolicitudesAsignadas() {
   };
 
   const cambiarEstado = async (id, nuevoEstado) => {
+    // Validar workflow
+  const entidad = location.pathname.includes('cotizaciones') ? 'COTIZACION' : 'SOLICITUD';
+  const estadoActual = solicitudes.find(s => s.id === id)?.estado;
+  
+  if (!validarTransicion(entidad, estadoActual, nuevoEstado)) {
+    Swal.fire({
+      icon: 'error',
+      title: 'Transición no permitida',
+      text: `No se puede cambiar de ${estadoActual} a ${nuevoEstado}`,
+    });
+    return;
+  }
+
     const result = await Swal.fire({
       title: '¿Cambiar estado?',
       text: `¿Deseas cambiar el estado a ${nuevoEstado}?`,
@@ -243,6 +276,12 @@ export default function SolicitudesAsignadas() {
         label: 'Ver Detalles',
         icon: 'fa-eye',
         onClick: () => abrirDetalle(solicitud)
+      },
+      // NUEVA ACCIÓN: VER HISTORIAL
+      {
+        label: 'Ver Historial',
+        icon: 'fa-history',
+        onClick: () => abrirHistorial(solicitud)
       }
     ];
 
@@ -384,10 +423,21 @@ export default function SolicitudesAsignadas() {
         }
         large={true}
         footer={
-          <button className="btn btn-secondary" onClick={cerrarModal}>
-            <i className="fa-solid fa-times"></i>
-            Cerrar
-          </button>
+          <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'space-between', width: '100%' }}>
+            <button 
+              className="btn btn-secondary" 
+              onClick={() => {
+                if (solicitudSeleccionada) {
+                  abrirHistorial(solicitudSeleccionada);
+                }
+              }}
+            >
+              <i className="fa-solid fa-history"></i> Ver Historial
+            </button>
+            <button className="btn btn-secondary" onClick={cerrarModal}>
+              <i className="fa-solid fa-times"></i> Cerrar
+            </button>
+          </div>
         }
       >
         {solicitudSeleccionada && (
@@ -531,6 +581,15 @@ export default function SolicitudesAsignadas() {
           </div>
         )}
       </Modal>
+
+      {/* Modal de Historial - NUEVO COMPONENTE */}
+      <HistorialModal
+        isOpen={modalHistorial}
+        onClose={() => setModalHistorial(false)}
+        tipoEntidad={entidadHistorial.tipo}
+        entidadId={entidadHistorial.id}
+        titulo={entidadHistorial.titulo}
+      />
     </div>
   );
 }

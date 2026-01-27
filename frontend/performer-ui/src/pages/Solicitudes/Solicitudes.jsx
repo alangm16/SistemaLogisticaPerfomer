@@ -11,7 +11,9 @@ import Modal from '../../components/Modal';
 import FormField from '../../components/FormField';
 import StatsGrid from '../../components/StatsGrid';
 import Badge from '../../components/Badge';
+import HistorialModal from '../../components/HistorialModal';
 import useForm from '../../hooks/useForm';
+import useWorkflow from '../../hooks/useWorkflow';
 import Swal from 'sweetalert2';
 import authHeader from '../../services/authHeader';
 import '../../styles/dashboard.css';
@@ -29,7 +31,9 @@ export default function Solicitudes() {
   const [modalAsignar, setModalAsignar] = useState(false);
   const [solicitudSeleccionada, setSolicitudSeleccionada] = useState(null);
   const [empleados, setEmpleados] = useState([]);
-  
+  const [modalHistorial, setModalHistorial] = useState(false);
+  const [entidadHistorial, setEntidadHistorial] = useState({tipo: '', id:null});
+
   const rol = localStorage.getItem('rol');
   const nombre = localStorage.getItem('nombre');
 
@@ -37,6 +41,8 @@ export default function Solicitudes() {
   const { values: formAsignacion, handleChange: handleAsignacionChange, resetForm: resetAsignacion } = useForm({
     empleadoId: ''
   });
+
+  const { validarTransicion } = useWorkflow();
 
   useEffect(() => {
     cargarDatos();
@@ -119,6 +125,16 @@ export default function Solicitudes() {
     }
   };
 
+  // Función para abrir historial
+  const abrirHistorial = (solicitud) => {
+    setEntidadHistorial({
+      tipo: 'SOLICITUD',
+      id: solicitud.id,
+      titulo: `Historial - ${solicitud.folioCodigo}`
+    });
+    setModalHistorial(true);
+  };
+
   const abrirModalAsignar = (solicitud) => {
     setSolicitudSeleccionada(solicitud);
     resetAsignacion({ empleadoId: '' });
@@ -167,6 +183,17 @@ export default function Solicitudes() {
   };
 
   const cambiarEstado = async (id, nuevoEstado) => {
+    const entidad = location.pathname.includes('cotizaciones') ? 'COTIZACION' : 'SOLICITUD';
+    const estadoActual = solicitudes.find(s => s.id === id)?.estado;
+    
+    if (!validarTransicion(entidad, estadoActual, nuevoEstado)) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Transición no permitida',
+        text: `No se puede cambiar de ${estadoActual} a ${nuevoEstado}`,
+      });
+      return;
+    }
     const result = await Swal.fire({
       title: '¿Cambiar estado?',
       text: `¿Deseas cambiar el estado a ${nuevoEstado}?`,
@@ -351,6 +378,11 @@ export default function Solicitudes() {
         label: 'Ver Detalles',
         icon: 'fa-eye',
         onClick: () => abrirDetalle(solicitud)
+      },
+      {
+        label: 'Ver Historial',
+        icon: 'fa-history',
+        onClick: () => abrirHistorial(solicitud)
       }
     ];
 
@@ -603,6 +635,14 @@ export default function Solicitudes() {
           </>
         )}
       </Modal>
+      {/* Modal de Historial */}
+      <HistorialModal
+        isOpen={modalHistorial}
+        onClose={() => setModalHistorial(false)}
+        tipoEntidad={entidadHistorial.tipo}
+        entidadId={entidadHistorial.id}
+        titulo={entidadHistorial.titulo}
+      />
     </div>
   );
 }

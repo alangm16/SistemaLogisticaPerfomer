@@ -38,9 +38,6 @@ public class Historial {
     @Column(nullable = false)
     private LocalDateTime timestamp = LocalDateTime.now();
 
-    /*public Historial() {
-    }*/
-
     public Historial(Long id, EntidadTipo entidadTipo, Long entidadId, String accion, String detalle, Empleado usuario) {
         this.id = id;
         this.entidadTipo = entidadTipo;

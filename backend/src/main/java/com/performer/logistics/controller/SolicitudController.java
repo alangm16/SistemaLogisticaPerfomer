@@ -54,7 +54,7 @@ public class SolicitudController {
         return SolicitudMapper.toDTO(solicitud);
     }
 
-    @PreAuthorize("hasAnyRole('VENDEDOR','PRICING')")
+    @PreAuthorize("hasAnyRole('VENDEDOR')")
     @PostMapping
     public Solicitud crear(@RequestBody Solicitud solicitud) {
         return solicitudService.guardar(solicitud);
@@ -67,7 +67,7 @@ public class SolicitudController {
     }
 
     @PutMapping("/{id}/estado")
-    @PreAuthorize("hasAnyRole('PRICING','ADMIN')")
+    @PreAuthorize("hasAnyRole('PRICING')")
     public Solicitud cambiarEstado(
             @PathVariable Long id, 
             @RequestParam Solicitud.Estado estado,
@@ -90,7 +90,7 @@ public class SolicitudController {
     }
     
     @PutMapping("/{id}/asignar")
-    @PreAuthorize("hasAnyRole('PRICING','ADMIN')")
+    @PreAuthorize("hasAnyRole('PRICING')")
     public Solicitud asignar(@PathVariable Long id, @RequestParam Long empleadoId) {
         return solicitudService.asignar(id, empleadoId);
     }

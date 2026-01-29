@@ -12,6 +12,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 @RestController
 @RequestMapping("/api/historial")
@@ -24,22 +25,26 @@ public class HistorialController {
     }
 
     @GetMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'PRICING','VENDEDOR')")
     public List<Historial> listar() {
         return historialService.listarTodos();
     }
 
     @PostMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'PRICING','VENDEDOR')")
     public Historial crear(@RequestBody Historial historial) {
         return historialService.guardar(historial);
     }
 
     @GetMapping("/{tipo}/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'PRICING','VENDEDOR')")
     public List<Historial> listarPorEntidad(@PathVariable Historial.EntidadTipo tipo,
                                             @PathVariable Long id) {
         return historialService.listarPorEntidad(tipo, id);
     }
     
     @GetMapping("/filtrado")
+    @PreAuthorize("hasAnyRole('ADMIN', 'PRICING','VENDEDOR')")
     public List<Historial> obtenerHistorialFiltrado(
         @RequestParam Historial.EntidadTipo tipo,
         @RequestParam Long entidadId,
@@ -55,6 +60,7 @@ public class HistorialController {
     }
 
     @GetMapping("/resumen/{tipo}/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'PRICING','VENDEDOR')")
     public Map<String, Object> obtenerResumenHistorial(
         @PathVariable Historial.EntidadTipo tipo,
         @PathVariable Long id) {

@@ -30,7 +30,7 @@ public class CotizacionController {
         return cotizacionService.listarTodas();
     }
 
-    @PreAuthorize("hasAnyRole('PRICING','ADMIN')") 
+    @PreAuthorize("hasAnyRole('PRICING')") 
     @PostMapping
     public Cotizacion crear(@RequestBody Cotizacion cotizacion) {
         return cotizacionService.guardar(cotizacion);
@@ -48,7 +48,7 @@ public class CotizacionController {
         return cotizacionService.sugerenciasPorSolicitud(solicitudId);
     }
     
-    @PreAuthorize("hasAnyRole('PRICING','ADMIN')")
+    @PreAuthorize("hasAnyRole('PRICING')")
     @PutMapping("/{id}")
     public Cotizacion actualizar(
             @PathVariable Long id,
@@ -72,7 +72,7 @@ public class CotizacionController {
         return cotizacionService.guardar(existente);
     }
     
-    @PreAuthorize("hasAnyRole('ADMIN','VENDEDOR','PRICING')")
+    @PreAuthorize("hasAnyRole('ADMIN','PRICING')")
     @DeleteMapping("/{id}")
     public void eliminar(@PathVariable Long id) {
         cotizacionService.eliminar(id);
@@ -95,7 +95,7 @@ public class CotizacionController {
     }
     
     @PutMapping("/{id}/estado")
-    @PreAuthorize("hasAnyRole('PRICING', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('PRICING')")
     public Cotizacion cambiarEstado(
         @PathVariable Long id,
         @RequestParam Cotizacion.Estado estado,

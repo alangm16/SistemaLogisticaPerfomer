@@ -44,7 +44,7 @@ export default function MainContent({ rol, nombre }) {
         label: 'Solicitudes', 
         path: '/solicitudes', 
         icon: 'fa-file-alt',
-        description: 'Crear y gestionar solicitudes'
+        description: 'Ver y gestionar solicitudes'
       },
       { 
         label: 'Mis Solicitudes', 
@@ -56,7 +56,7 @@ export default function MainContent({ rol, nombre }) {
         label: 'Solicitudes Asignadas', 
         path: '/solicitudes/asignadas', 
         icon: 'fa-tasks',
-        description: 'Solicitudes asignadas a mí'
+        description: 'Asignar y ver asignaciones'
       },
       { 
         label: 'Proveedores', 
@@ -69,6 +69,12 @@ export default function MainContent({ rol, nombre }) {
         path: '/cotizaciones', 
         icon: 'fa-calculator',
         description: 'Crear y ver cotizaciones'
+      },
+      {
+        label: 'Nueva Cotización',
+        path: '/cotizaciones/nueva',
+        icon: 'fa-plus',
+        description: 'Crear nueva cotización'
       },
     ],
     VENDEDOR: [
@@ -100,7 +106,7 @@ export default function MainContent({ rol, nombre }) {
         label: 'Proveedores', 
         path: '/proveedores', 
         icon: 'fa-truck',
-        description: 'Gestionar proveedores'
+        description: 'Ver y gestionarproveedores'
       },
       { 
         label: 'Cotizaciones Recientes', 

@@ -6,7 +6,7 @@ export default function Sidebar({ rol }) {
   const location = useLocation();
   const navigate = useNavigate();
 
-  // Configuración de módulos por rol - DEBEN COINCIDIR CON MainContent
+  // Configuración de módulos por rol
   const modulosPorRol = {
     ADMIN: [
       { label: 'Empleados', path: '/empleados', icon: 'fa-user-tie' },
@@ -21,6 +21,7 @@ export default function Sidebar({ rol }) {
       { label: 'Solicitudes Asignadas', path: '/solicitudes/asignadas', icon: 'fa-tasks' },
       { label: 'Proveedores', path: '/proveedores', icon: 'fa-truck' },
       { label: 'Cotizaciones', path: '/cotizaciones', icon: 'fa-calculator' },
+      { label: 'Nueva Cotización', path: '/cotizaciones/nueva', icon: 'fa-plus' },
     ],
     VENDEDOR: [
       { label: 'Nueva Solicitud', path: '/solicitudes/nueva', icon: 'fa-plus-circle' },

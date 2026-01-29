@@ -56,7 +56,7 @@ function App() {
         } />
         {/* CRUD de Clientes (VENDEDOR y ADMIN) */}
         <Route path="/clientes" element={
-          <PrivateRoute roles={['VENDEDOR','ADMIN']}>
+          <PrivateRoute roles={['VENDEDOR','PRICING','ADMIN']}>
             <Clientes />
           </PrivateRoute>
         } /> 
@@ -71,18 +71,18 @@ function App() {
             <Cotizaciones />
           </PrivateRoute>
         } />
-        <Route path="/cotizaciones/nueva" element={ <PrivateRoute roles={['PRICING','VENDEDOR']}>
+        <Route path="/cotizaciones/nueva" element={ <PrivateRoute roles={['PRICING']}>
           <NuevaCotizacion />
         </PrivateRoute>
         } />
-        <Route path="/cotizaciones/:id" element={ <PrivateRoute roles={['PRICING','VENDEDOR']}>
+        <Route path="/cotizaciones/:id" element={ <PrivateRoute roles={['PRICING','VENDEDOR','ADMIN']}>
           <DetallesCotizacion />
         </PrivateRoute> 
         } />
         <Route path="/solicitudes/nueva" element={<PrivateRoute roles={['VENDEDOR']}>
           <NuevaSolicitud />
         </PrivateRoute>} />
-        <Route path="/solicitudes/mis-solicitudes" element={<PrivateRoute roles={['VENDEDOR','PRICING','ADMIN']}>
+        <Route path="/solicitudes/mis-solicitudes" element={<PrivateRoute roles={['VENDEDOR','PRICING']}>
           <MisSolicitudes />
         </PrivateRoute>} />
         <Route path="/solicitudes/asignadas" element={

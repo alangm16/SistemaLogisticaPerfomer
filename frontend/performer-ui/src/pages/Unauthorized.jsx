@@ -11,11 +11,11 @@ export default function Unauthorized() {
   const getDashboardRoute = () => {
     switch(rol) {
       case 'VENDEDOR':
-        return '/solicitudes/mis';
+        return '/dashboard';
       case 'PRICING':
-        return '/solicitudes';
+        return '/dashboard';
       case 'ADMIN':
-        return '/empleados';
+        return '/dashboard';
       default:
         return '/';
     }
@@ -38,33 +38,20 @@ export default function Unauthorized() {
             No tienes permisos para acceder a esta sección.
           </p>
           
-          {/* Detalles adicionales */}
+          {/* Detalles adicionales - versión compacta */}
           <div className="unauthorized-details">
-            <div className="info-card">
-              <div className="info-item">
-                <i className="fa-solid fa-user-shield"></i>
-                <span>Rol Actual:</span>
-                <Badge type={rol?.toLowerCase() || 'default'}>
-                  {rol || 'No identificado'}
-                </Badge>
-              </div>
-              
-              <div className="info-item">
-                <i className="fa-solid fa-user"></i>
-                <span>Usuario:</span>
-                <span className="info-value">{nombre || 'Invitado'}</span>
-              </div>
-              
-              <div className="info-item">
-                <i className="fa-solid fa-clock"></i>
-                <span>Hora:</span>
-                <span className="info-value">
-                  {new Date().toLocaleTimeString('es-MX', { 
-                    hour: '2-digit', 
-                    minute: '2-digit' 
-                  })}
-                </span>
-              </div>
+            <div className="info-item">
+              <i className="fa-solid fa-user"></i>
+              <span className="info-label">Usuario:</span>
+              <span className="info-value">{nombre || 'Invitado'}</span>
+            </div>
+            
+            <div className="info-item">
+              <i className="fa-solid fa-user-shield"></i>
+              <span className="info-label">Rol:</span>
+              <Badge type={rol?.toLowerCase() || 'default'}>
+                {rol || 'No identificado'}
+              </Badge>
             </div>
           </div>
           
@@ -75,26 +62,16 @@ export default function Unauthorized() {
               Volver al Dashboard
             </Link>
             
-            <Link to="/" className="btn btn-secondary">
+            <Link to="/" className="btn btn-outline">
               <i className="fa-solid fa-home"></i>
               Ir al Inicio
             </Link>
-            
-            <button 
-              className="btn btn-outline"
-              onClick={() => window.history.back()}
-            >
-              <i className="fa-solid fa-rotate-left"></i>
-              Volver Atrás
-            </button>
           </div>
           
           {/* Información de contacto para solicitar permisos */}
           <div className="unauthorized-contact">
-            <p>
-              <i className="fa-solid fa-circle-info"></i>
-              Si necesitas acceso a esta sección, contacta al administrador del sistema.
-            </p>
+            <i className="fa-solid fa-circle-info"></i>
+            <span>Si necesitas acceso, contacta al administrador del sistema.</span>
           </div>
         </div>
       </div>

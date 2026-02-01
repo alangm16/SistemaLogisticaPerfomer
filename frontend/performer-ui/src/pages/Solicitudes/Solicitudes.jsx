@@ -1,5 +1,6 @@
 // src/pages/solicitudes/Solicitudes.jsx
 import { useEffect, useState, useMemo, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { api } from '../../services/api';
 import Sidebar from '../../components/Sidebar';
 import Header from '../../components/Header';
@@ -12,6 +13,7 @@ import FormField from '../../components/FormField';
 import StatsGrid from '../../components/StatsGrid';
 import Badge from '../../components/Badge';
 import HistorialModal from '../../components/HistorialModal';
+import Paginacion from '../../components/Paginacion'; // Importar componente
 import useForm from '../../hooks/useForm';
 import useWorkflow from '../../hooks/useWorkflow';
 import Swal from 'sweetalert2';
@@ -21,6 +23,7 @@ import '../../styles/solicitudes.css';
 import '../../styles/generales.css';
 
 export default function Solicitudes() {
+  const navigate = useNavigate();
   const [solicitudes, setSolicitudes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -34,8 +37,25 @@ export default function Solicitudes() {
   const [modalHistorial, setModalHistorial] = useState(false);
   const [entidadHistorial, setEntidadHistorial] = useState({tipo: '', id:null});
 
+  // Estado para paginación
+  const [paginaActual, setPaginaActual] = useState(1);
+  const [elementosPorPagina] = useState(5);
+
   const rol = localStorage.getItem('rol');
   const nombre = localStorage.getItem('nombre');
+
+  // Permisos según rol - AGREGADO
+  const permisos = {
+    puedeAsignar: rol === 'PRICING', // Solo PRICING y ADMIN pueden asignar
+    puedeCambiarEstado: rol === 'PRICING', // Solo PRICING y ADMIN pueden cambiar estados
+    puedeCrear: rol === 'VENDEDOR', // Solo VENDEDOR puede crear nuevas solicitudes
+    puedeVerHistorial: true, // Todos pueden ver historial
+    puedeVerDetalles: true, // Todos pueden ver detalles
+    puedeVerTodo: rol === 'PRICING' || rol === 'ADMIN', // PRICING y ADMIN ven todas las solicitudes
+    esVendedor: rol === 'VENDEDOR', // Para lógica específica de vendedor
+    esPricing: rol === 'PRICING', // Para lógica específica de pricing
+    esAdmin: rol === 'ADMIN' // Para lógica específica de admin
+  };
 
   // Hook personalizado para el formulario de asignación
   const { values: formAsignacion, handleChange: handleAsignacionChange, resetForm: resetAsignacion } = useForm({
@@ -50,13 +70,30 @@ export default function Solicitudes() {
 
   const cargarDatos = useCallback(async () => {
     try {
+      let endpoint = '/solicitudes';
+      
+      // VENDEDOR solo ve sus propias solicitudes y asignadas
+      if (rol === 'VENDEDOR') {
+        endpoint = '/solicitudes/mis';
+      } 
+      // PRICING y ADMIN ven todas
+      else if (rol === 'PRICING' || rol === 'ADMIN') {
+        endpoint = '/solicitudes';
+      }
+      
       const [resSolicitudes, resEmpleados] = await Promise.all([
-        api.get('/solicitudes', { headers: authHeader() }),
-        api.get('/empleados', { headers: authHeader() })
+        api.get(endpoint, { headers: authHeader() }),
+        rol === 'PRICING' || rol === 'ADMIN' 
+          ? api.get('/empleados', { headers: authHeader() }) 
+          : Promise.resolve({ data: [] }) // VENDEDOR no necesita empleados
       ]);
       
       setSolicitudes(resSolicitudes.data);
-      setEmpleados(resEmpleados.data.filter(e => e.rol === 'PRICING' && e.estado === 'ACTIVO'));
+      
+      // Solo PRICING y ADMIN necesitan lista de empleados para asignar
+      if (rol === 'PRICING' || rol === 'ADMIN') {
+        setEmpleados(resEmpleados.data.filter(e => e.rol === 'PRICING' && e.estado === 'ACTIVO'));
+      }
     } catch (err) {
       console.error('Error cargando datos:', err);
       setError('No se pudieron cargar las solicitudes');
@@ -110,6 +147,13 @@ export default function Solicitudes() {
     return resultado.sort((a, b) => new Date(b.creadoEn) - new Date(a.creadoEn));
   }, [solicitudes, filtro, filtroFecha, busqueda]);
 
+  // Calcular solicitudes paginadas
+  const solicitudesPaginadas = useMemo(() => {
+    const startIndex = (paginaActual - 1) * elementosPorPagina;
+    const endIndex = startIndex + elementosPorPagina;
+    return solicitudesFiltradas.slice(startIndex, endIndex);
+  }, [solicitudesFiltradas, paginaActual, elementosPorPagina]);
+
   const abrirDetalle = async (solicitud) => {
     try {
       const res = await api.get(`/solicitudes/${solicitud.id}`);
@@ -136,6 +180,16 @@ export default function Solicitudes() {
   };
 
   const abrirModalAsignar = (solicitud) => {
+    // Verificar permisos
+    if (!permisos.puedeAsignar) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Acceso denegado',
+        text: 'No tienes permisos para asignar solicitudes.',
+      });
+      return;
+    }
+    
     setSolicitudSeleccionada(solicitud);
     resetAsignacion({ empleadoId: '' });
     setModalAsignar(true);
@@ -149,6 +203,16 @@ export default function Solicitudes() {
   };
 
   const asignarSolicitud = async () => {
+    // Verificar permisos
+    if (!permisos.puedeAsignar) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Acceso denegado',
+        text: 'No tienes permisos para asignar solicitudes.',
+      });
+      return;
+    }
+
     if (!formAsignacion.empleadoId) {
       Swal.fire({
         icon: 'warning',
@@ -183,6 +247,16 @@ export default function Solicitudes() {
   };
 
   const cambiarEstado = async (id, nuevoEstado) => {
+    // Verificar permisos
+    if (!permisos.puedeCambiarEstado) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Acceso denegado',
+        text: 'No tienes permisos para cambiar el estado de solicitudes.',
+      });
+      return;
+    }
+
     const entidad = location.pathname.includes('cotizaciones') ? 'COTIZACION' : 'SOLICITUD';
     const estadoActual = solicitudes.find(s => s.id === id)?.estado;
     
@@ -194,6 +268,7 @@ export default function Solicitudes() {
       });
       return;
     }
+    
     const result = await Swal.fire({
       title: '¿Cambiar estado?',
       text: `¿Deseas cambiar el estado a ${nuevoEstado}?`,
@@ -371,7 +446,7 @@ export default function Solicitudes() {
     }
   ];
 
-  // Configuración de acciones para DropdownActions
+  // Configuración de acciones para DropdownActions - MODIFICADO CON PERMISOS
   const getAcciones = (solicitud) => {
     const items = [
       {
@@ -386,8 +461,8 @@ export default function Solicitudes() {
       }
     ];
 
-    // Agregar opción de asignar si está pendiente y sin asignar
-    if (!solicitud.asignadoAId && solicitud.estado === 'PENDIENTE') {
+    // Solo PRICING/ADMIN pueden asignar (y solo si está pendiente y sin asignar)
+    if (permisos.puedeAsignar && !solicitud.asignadoAId && solicitud.estado === 'PENDIENTE') {
       items.push({ divider: true });
       items.push({
         label: 'Asignar a Pricing',
@@ -397,34 +472,36 @@ export default function Solicitudes() {
       });
     }
 
-    // Agregar opciones de cambio de estado
-    if (solicitud.estado === 'PENDIENTE' || solicitud.estado === 'ENVIADO') {
-      items.push({ divider: true });
-      
-      if (solicitud.estado === 'PENDIENTE') {
+    // Solo PRICING/ADMIN pueden cambiar estado
+    if (permisos.puedeCambiarEstado) {
+      if (solicitud.estado === 'PENDIENTE' || solicitud.estado === 'ENVIADO') {
+        items.push({ divider: true });
+        
+        if (solicitud.estado === 'PENDIENTE') {
+          items.push({
+            label: 'Marcar como Enviado',
+            icon: 'fa-paper-plane',
+            onClick: () => cambiarEstado(solicitud.id, 'ENVIADO'),
+            customIconStyle: { color: '#3b82f6' }
+          });
+        }
+
+        if (solicitud.estado === 'ENVIADO') {
+          items.push({
+            label: 'Marcar como Completado',
+            icon: 'fa-circle-check',
+            onClick: () => cambiarEstado(solicitud.id, 'COMPLETADO'),
+            customIconStyle: { color: '#10b981' }
+          });
+        }
+
         items.push({
-          label: 'Marcar como Enviado',
-          icon: 'fa-paper-plane',
-          onClick: () => cambiarEstado(solicitud.id, 'ENVIADO'),
-          customIconStyle: { color: '#3b82f6' }
+          label: 'Cancelar',
+          icon: 'fa-ban',
+          onClick: () => cambiarEstado(solicitud.id, 'CANCELADO'),
+          danger: true
         });
       }
-
-      if (solicitud.estado === 'ENVIADO') {
-        items.push({
-          label: 'Marcar como Completado',
-          icon: 'fa-circle-check',
-          onClick: () => cambiarEstado(solicitud.id, 'COMPLETADO'),
-          customIconStyle: { color: '#10b981' }
-        });
-      }
-
-      items.push({
-        label: 'Cancelar',
-        icon: 'fa-ban',
-        onClick: () => cambiarEstado(solicitud.id, 'CANCELADO'),
-        danger: true
-      });
     }
 
     return items;
@@ -457,7 +534,7 @@ export default function Solicitudes() {
         <Sidebar rol={rol} />
         <div className="dashboard-content">
           <Header nombre={nombre} rol={rol} />
-          <Subheader titulo="Todas las Solicitudes" />
+          <Subheader titulo={rol === 'VENDEDOR' ? "Mis Solicitudes" : "Todas las Solicitudes"} />
           <main className="main-panel">
             <div className="loading-container">
               <div className="spinner"></div>
@@ -477,7 +554,7 @@ export default function Solicitudes() {
       <div className="dashboard-content">
         <Header nombre={nombre} rol={rol} />
         <Subheader 
-          titulo="Todas las Solicitudes"
+          titulo={rol === 'VENDEDOR' ? "Mis Solicitudes" : "Todas las Solicitudes"}
           busqueda={busqueda}
           onBusquedaChange={setBusqueda}
           filtro={filtro}
@@ -489,6 +566,8 @@ export default function Solicitudes() {
             { valor: 'COMPLETADO', label: 'Completadas' },
             { valor: 'CANCELADO', label: 'Canceladas' }
           ]}
+          // Solo VENDEDOR ve botón de Nueva Solicitud en esta vista
+          onAgregarClick={permisos.puedeCrear ? () => navigate('/solicitudes/nueva') : undefined}
         />
         
         <main className="main-panel">
@@ -526,9 +605,19 @@ export default function Solicitudes() {
             </div>
           )}
 
+          {/* Controles de paginación (superior) */}
+          {solicitudesFiltradas.length > 0 && (
+            <Paginacion
+              paginaActual={paginaActual}
+              totalElementos={solicitudesFiltradas.length}
+              elementosPorPagina={elementosPorPagina}
+              onChangePagina={setPaginaActual}
+            />
+          )}
+
           {/* DataTable Component */}
           <DataTable
-            data={solicitudesFiltradas}
+            data={solicitudesPaginadas}
             columns={columns}
             renderActions={(solicitud) => (
               <DropdownActions
@@ -541,6 +630,16 @@ export default function Solicitudes() {
             emptyMessage="No se encontraron solicitudes"
             emptyIcon="fa-inbox"
           />
+
+          {/* Controles de paginación (inferior) */}
+          {solicitudesFiltradas.length > 0 && (
+            <Paginacion
+              paginaActual={paginaActual}
+              totalElementos={solicitudesFiltradas.length}
+              elementosPorPagina={elementosPorPagina}
+              onChangePagina={setPaginaActual}
+            />
+          )}
         </main>
         
         <Footer />
@@ -635,6 +734,7 @@ export default function Solicitudes() {
           </>
         )}
       </Modal>
+      
       {/* Modal de Historial */}
       <HistorialModal
         isOpen={modalHistorial}

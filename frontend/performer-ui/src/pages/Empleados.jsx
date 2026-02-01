@@ -1,5 +1,5 @@
-// src/pages/Empleados.jsx - VERSIÓN OPTIMIZADA
-import { useEffect, useState } from 'react';
+// src/pages/Empleados.jsx
+import { useEffect, useState, useMemo } from 'react';
 import { api } from '../services/api';
 import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
@@ -11,6 +11,7 @@ import Modal from '../components/Modal';
 import FormField from '../components/FormField';
 import StatsGrid from '../components/StatsGrid';
 import Badge from '../components/Badge';
+import Paginacion from '../components/Paginacion';
 import useForm from '../hooks/useForm';
 import Swal from 'sweetalert2';
 import '../styles/dashboard.css';
@@ -26,6 +27,10 @@ export default function Empleados() {
   const [empleadoSeleccionado, setEmpleadoSeleccionado] = useState(null);
   const [filtro, setFiltro] = useState('TODOS');
   const [busqueda, setBusqueda] = useState('');
+
+  // Estado para paginación
+  const [paginaActual, setPaginaActual] = useState(1);
+  const [elementosPorPagina] = useState(5);
 
   // Usar el hook personalizado para el formulario
   const { values: formData, handleChange, resetForm } = useForm({
@@ -220,24 +225,62 @@ export default function Empleados() {
     }
   };
 
-  // Filtrado de empleados
-  const empleadosFiltrados = empleados.filter(u => {
-    const coincideBusqueda = 
-      u.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
-      u.email.toLowerCase().includes(busqueda.toLowerCase());
-    
-    const coincideFiltro = filtro === 'TODOS' || u.estado === filtro;
-    
-    return coincideBusqueda && coincideFiltro;
-  });
+  // Filtrado de empleados con useMemo para optimización
+  const empleadosFiltrados = useMemo(() => {
+    return empleados.filter(u => {
+      const coincideBusqueda = 
+        u.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
+        u.email.toLowerCase().includes(busqueda.toLowerCase());
+      
+      const coincideFiltro = filtro === 'TODOS' || u.estado === filtro;
+      
+      return coincideBusqueda && coincideFiltro;
+    });
+  }, [empleados, filtro, busqueda]);
 
-  // Contadores para las stats
-  const contadores = {
-    total: empleados.length,
-    activos: empleados.filter(u => u.estado === 'ACTIVO').length,
-    pendientes: empleados.filter(u => u.estado === 'PENDIENTE').length,
-    inactivos: empleados.filter(u => u.estado === 'INACTIVO').length,
-  };
+  // Calcular empleados paginados
+  const empleadosPaginados = useMemo(() => {
+    const startIndex = (paginaActual - 1) * elementosPorPagina;
+    const endIndex = startIndex + elementosPorPagina;
+    return empleadosFiltrados.slice(startIndex, endIndex);
+  }, [empleadosFiltrados, paginaActual, elementosPorPagina]);
+
+  // Contadores para las stats con useMemo
+  const statsData = useMemo(() => {
+    const contadores = {
+      total: empleados.length,
+      activos: empleados.filter(u => u.estado === 'ACTIVO').length,
+      pendientes: empleados.filter(u => u.estado === 'PENDIENTE').length,
+      inactivos: empleados.filter(u => u.estado === 'INACTIVO').length,
+    };
+
+    return [
+      {
+        label: 'Total Empleados',
+        value: contadores.total,
+        icon: 'fa-users',
+        iconClass: 'stat-icon-total'
+      },
+      {
+        label: 'Activos',
+        value: contadores.activos,
+        icon: 'fa-user-check',
+        iconClass: 'stat-icon-activos'
+      },
+      {
+        label: 'Pendientes',
+        value: contadores.pendientes,
+        icon: 'fa-clock',
+        iconClass: 'stat-icon-pendientes'
+      },
+      {
+        label: 'Inactivos',
+        value: contadores.inactivos,
+        icon: 'fa-user-slash',
+        iconClass: 'stat-icon-inactivos'
+      }
+    ];
+  }, [empleados]);
 
   // Configuración de columnas para DataTable
   const columns = [
@@ -271,34 +314,6 @@ export default function Empleados() {
           {u.estado}
         </Badge>
       )
-    }
-  ];
-
-  // Configuración de stats para StatsGrid
-  const statsData = [
-    {
-      label: 'Total Empleados',
-      value: contadores.total,
-      icon: 'fa-users',
-      iconClass: 'stat-icon-total'
-    },
-    {
-      label: 'Activos',
-      value: contadores.activos,
-      icon: 'fa-user-check',
-      iconClass: 'stat-icon-activos'
-    },
-    {
-      label: 'Pendientes',
-      value: contadores.pendientes,
-      icon: 'fa-clock',
-      iconClass: 'stat-icon-pendientes'
-    },
-    {
-      label: 'Inactivos',
-      value: contadores.inactivos,
-      icon: 'fa-user-slash',
-      iconClass: 'stat-icon-inactivos'
     }
   ];
 
@@ -346,6 +361,7 @@ export default function Empleados() {
         <Sidebar rol={rol} />
         <div className="dashboard-content">
           <Header nombre={nombre} rol={rol} />
+          <Subheader titulo="Gestión de Empleados" />
           <main className="main-panel">
             <div className="loading-container">
               <div className="spinner"></div>
@@ -420,9 +436,19 @@ export default function Empleados() {
             </div>
           )}
 
+          {/* Controles de paginación (superior) */}
+          {empleadosFiltrados.length > 0 && (
+            <Paginacion
+              paginaActual={paginaActual}
+              totalElementos={empleadosFiltrados.length}
+              elementosPorPagina={elementosPorPagina}
+              onChangePagina={setPaginaActual}
+            />
+          )}
+
           {/* Data Table */}
           <DataTable
-            data={empleadosFiltrados}
+            data={empleadosPaginados}
             columns={columns}
             renderActions={(empleado) => (
               <DropdownActions
@@ -432,6 +458,16 @@ export default function Empleados() {
             emptyMessage="No se encontraron empleados"
             emptyIcon="fa-users-slash"
           />
+
+          {/* Controles de paginación (inferior) */}
+          {empleadosFiltrados.length > 0 && (
+            <Paginacion
+              paginaActual={paginaActual}
+              totalElementos={empleadosFiltrados.length}
+              elementosPorPagina={elementosPorPagina}
+              onChangePagina={setPaginaActual}
+            />
+          )}
         </main>
 
         <Footer />

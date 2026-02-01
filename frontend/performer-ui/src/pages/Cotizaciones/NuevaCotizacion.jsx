@@ -37,7 +37,23 @@ export default function NuevaCotizacion() {
   const rol = localStorage.getItem('rol');
   const nombre = localStorage.getItem('nombre');
 
-  useEffect(() => { cargarDatos(); }, []);
+  // Verificar permisos al cargar el componente
+  useEffect(() => {
+    // Solo PRICING puede crear cotizaciones
+    if (rol !== 'PRICING') {
+      Swal.fire({
+        icon: 'error',
+        title: 'Acceso denegado',
+        text: 'No tienes permisos para crear cotizaciones.',
+        confirmButtonText: 'Volver'
+      }).then(() => {
+        navigate('/cotizaciones');
+      });
+      return;
+    }
+
+    cargarDatos();
+  }, [rol, navigate]);
 
   const cargarDatos = async () => {
     try {
@@ -218,6 +234,11 @@ export default function NuevaCotizacion() {
         </div>
       </div>
     );
+  }
+
+  // Si no tiene permisos, no renderizar el formulario (ya fue redirigido)
+  if (rol !== 'PRICING') {
+    return null;
   }
 
   return (

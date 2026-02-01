@@ -1,5 +1,5 @@
 // src/pages/solicitudes/SolicitudesAsignadas.jsx
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { api } from '../../services/api';
 import Sidebar from '../../components/Sidebar';
 import Header from '../../components/Header';
@@ -11,6 +11,7 @@ import Modal from '../../components/Modal';
 import StatsGrid from '../../components/StatsGrid';
 import Badge from '../../components/Badge';
 import HistorialModal from '../../components/HistorialModal';
+import Paginacion from '../../components/Paginacion'; // Importar componente
 import useWorkflow from '../../hooks/useWorkflow';
 import Swal from 'sweetalert2';
 import authHeader from '../../services/authHeader';
@@ -27,6 +28,7 @@ export default function SolicitudesAsignadas() {
   const [modalDetalle, setModalDetalle] = useState(false);
   const [solicitudSeleccionada, setSolicitudSeleccionada] = useState(null);
   const { validarTransicion } = useWorkflow();
+  
   // NUEVOS ESTADOS PARA HISTORIAL
   const [modalHistorial, setModalHistorial] = useState(false);
   const [entidadHistorial, setEntidadHistorial] = useState({ 
@@ -35,8 +37,22 @@ export default function SolicitudesAsignadas() {
     titulo: '' 
   });
   
+  // Estado para paginación
+  const [paginaActual, setPaginaActual] = useState(1);
+  const [elementosPorPagina] = useState(5);
+  
   const rol = localStorage.getItem('rol');
   const nombre = localStorage.getItem('nombre');
+
+  // Permisos según rol - AGREGADO
+  const permisos = useMemo(() => ({
+    puedeCambiarEstado: rol === 'VENDEDOR' || rol === 'PRICING', // Solo VENDEDOR y PRICING pueden cambiar estado
+    puedeVerHistorial: true, // Todos pueden ver historial
+    puedeVerDetalles: true, // Todos pueden ver detalles
+    esVendedor: rol === 'VENDEDOR',
+    esPricing: rol === 'PRICING',
+    esAdmin: rol === 'ADMIN'
+  }), [rol]);
 
   useEffect(() => {
     cargarSolicitudes();
@@ -64,19 +80,28 @@ export default function SolicitudesAsignadas() {
     setModalHistorial(true);
   };
 
-  // Filtrado de solicitudes
-  const solicitudesFiltradas = solicitudes.filter(s => {
-    const coincideBusqueda = 
-      s.folioCodigo?.toLowerCase().includes(busqueda.toLowerCase()) ||
-      s.clienteNombre?.toLowerCase().includes(busqueda.toLowerCase()) ||
-      s.origenCiudad?.toLowerCase().includes(busqueda.toLowerCase()) ||
-      s.destinoCiudad?.toLowerCase().includes(busqueda.toLowerCase()) ||
-      s.tipoServicio?.toLowerCase().includes(busqueda.toLowerCase());
-    
-    const coincideFiltro = filtro === 'TODAS' || s.estado === filtro;
-    
-    return coincideBusqueda && coincideFiltro;
-  });
+  // Filtrado de solicitudes con useMemo para optimización
+  const solicitudesFiltradas = useMemo(() => {
+    return solicitudes.filter(s => {
+      const coincideBusqueda = 
+        s.folioCodigo?.toLowerCase().includes(busqueda.toLowerCase()) ||
+        s.clienteNombre?.toLowerCase().includes(busqueda.toLowerCase()) ||
+        s.origenCiudad?.toLowerCase().includes(busqueda.toLowerCase()) ||
+        s.destinoCiudad?.toLowerCase().includes(busqueda.toLowerCase()) ||
+        s.tipoServicio?.toLowerCase().includes(busqueda.toLowerCase());
+      
+      const coincideFiltro = filtro === 'TODAS' || s.estado === filtro;
+      
+      return coincideBusqueda && coincideFiltro;
+    });
+  }, [solicitudes, filtro, busqueda]);
+
+  // Calcular solicitudes paginadas
+  const solicitudesPaginadas = useMemo(() => {
+    const startIndex = (paginaActual - 1) * elementosPorPagina;
+    const endIndex = startIndex + elementosPorPagina;
+    return solicitudesFiltradas.slice(startIndex, endIndex);
+  }, [solicitudesFiltradas, paginaActual, elementosPorPagina]);
 
   const abrirDetalle = async (solicitud) => {
     try {
@@ -99,18 +124,28 @@ export default function SolicitudesAsignadas() {
   };
 
   const cambiarEstado = async (id, nuevoEstado) => {
+    // Verificar permisos
+    if (!permisos.puedeCambiarEstado) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Acceso denegado',
+        text: 'No tienes permisos para cambiar el estado de solicitudes.',
+      });
+      return;
+    }
+
     // Validar workflow
-  const entidad = location.pathname.includes('cotizaciones') ? 'COTIZACION' : 'SOLICITUD';
-  const estadoActual = solicitudes.find(s => s.id === id)?.estado;
-  
-  if (!validarTransicion(entidad, estadoActual, nuevoEstado)) {
-    Swal.fire({
-      icon: 'error',
-      title: 'Transición no permitida',
-      text: `No se puede cambiar de ${estadoActual} a ${nuevoEstado}`,
-    });
-    return;
-  }
+    const entidad = location.pathname.includes('cotizaciones') ? 'COTIZACION' : 'SOLICITUD';
+    const estadoActual = solicitudes.find(s => s.id === id)?.estado;
+    
+    if (!validarTransicion(entidad, estadoActual, nuevoEstado)) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Transición no permitida',
+        text: `No se puede cambiar de ${estadoActual} a ${nuevoEstado}`,
+      });
+      return;
+    }
 
     const result = await Swal.fire({
       title: '¿Cambiar estado?',
@@ -174,13 +209,42 @@ export default function SolicitudesAsignadas() {
     return icons[estado] || 'fa-clock';
   };
 
-  // Contadores para las stats
-  const contadores = {
-    total: solicitudes.length,
-    pendientes: solicitudes.filter(s => s.estado === 'PENDIENTE').length,
-    enviadas: solicitudes.filter(s => s.estado === 'ENVIADO').length,
-    completadas: solicitudes.filter(s => s.estado === 'COMPLETADO').length,
-  };
+  // Contadores para las stats con useMemo
+  const statsData = useMemo(() => {
+    const contadores = {
+      total: solicitudes.length,
+      pendientes: solicitudes.filter(s => s.estado === 'PENDIENTE').length,
+      enviadas: solicitudes.filter(s => s.estado === 'ENVIADO').length,
+      completadas: solicitudes.filter(s => s.estado === 'COMPLETADO').length,
+    };
+
+    return [
+      {
+        label: 'Total Asignadas',
+        value: contadores.total,
+        icon: 'fa-clipboard-list',
+        iconClass: 'stat-icon-total'
+      },
+      {
+        label: 'Por Procesar',
+        value: contadores.pendientes,
+        icon: 'fa-hourglass-half',
+        iconClass: 'stat-icon-pendientes'
+      },
+      {
+        label: 'En Proceso',
+        value: contadores.enviadas,
+        icon: 'fa-spinner',
+        iconClass: 'stat-icon-enviadas'
+      },
+      {
+        label: 'Completadas',
+        value: contadores.completadas,
+        icon: 'fa-check-double',
+        iconClass: 'stat-icon-completadas'
+      }
+    ];
+  }, [solicitudes]);
 
   // Configuración de columnas para DataTable
   const columns = [
@@ -241,35 +305,7 @@ export default function SolicitudesAsignadas() {
     }
   ];
 
-  // Configuración de stats para StatsGrid
-  const statsData = [
-    {
-      label: 'Total Asignadas',
-      value: contadores.total,
-      icon: 'fa-clipboard-list',
-      iconClass: 'stat-icon-total'
-    },
-    {
-      label: 'Por Procesar',
-      value: contadores.pendientes,
-      icon: 'fa-hourglass-half',
-      iconClass: 'stat-icon-pendientes'
-    },
-    {
-      label: 'En Proceso',
-      value: contadores.enviadas,
-      icon: 'fa-spinner',
-      iconClass: 'stat-icon-enviadas'
-    },
-    {
-      label: 'Completadas',
-      value: contadores.completadas,
-      icon: 'fa-check-double',
-      iconClass: 'stat-icon-completadas'
-    }
-  ];
-
-  // Obtener acciones dinámicas según el estado de la solicitud
+  // Obtener acciones dinámicas según el estado de la solicitud - MODIFICADO CON PERMISOS
   const getAccionesSolicitud = (solicitud) => {
     const acciones = [
       {
@@ -277,7 +313,6 @@ export default function SolicitudesAsignadas() {
         icon: 'fa-eye',
         onClick: () => abrirDetalle(solicitud)
       },
-      // NUEVA ACCIÓN: VER HISTORIAL
       {
         label: 'Ver Historial',
         icon: 'fa-history',
@@ -285,8 +320,8 @@ export default function SolicitudesAsignadas() {
       }
     ];
 
-    // Solo agregar acciones de cambio de estado si está pendiente o enviada
-    if (solicitud.estado === 'PENDIENTE' || solicitud.estado === 'ENVIADO') {
+    // Solo VENDEDOR y PRICING pueden cambiar estado (solo pendientes o enviadas)
+    if (permisos.puedeCambiarEstado && (solicitud.estado === 'PENDIENTE' || solicitud.estado === 'ENVIADO')) {
       acciones.push({ divider: true });
       
       if (solicitud.estado === 'PENDIENTE') {
@@ -324,6 +359,7 @@ export default function SolicitudesAsignadas() {
         <Sidebar rol={rol} />
         <div className="dashboard-content">
           <Header nombre={nombre} rol={rol} />
+          <Subheader titulo="Solicitudes Asignadas" />
           <main className="main-panel">
             <div className="loading-container">
               <div className="spinner"></div>
@@ -394,9 +430,19 @@ export default function SolicitudesAsignadas() {
             </div>
           )}
 
+          {/* Controles de paginación (superior) */}
+          {solicitudesFiltradas.length > 0 && (
+            <Paginacion
+              paginaActual={paginaActual}
+              totalElementos={solicitudesFiltradas.length}
+              elementosPorPagina={elementosPorPagina}
+              onChangePagina={setPaginaActual}
+            />
+          )}
+
           {/* Data Table */}
           <DataTable
-            data={solicitudesFiltradas}
+            data={solicitudesPaginadas}
             columns={columns}
             renderActions={(solicitud) => (
               <DropdownActions
@@ -407,6 +453,16 @@ export default function SolicitudesAsignadas() {
             emptyMessage="No hay solicitudes asignadas"
             emptyIcon="fa-clipboard-question"
           />
+
+          {/* Controles de paginación (inferior) */}
+          {solicitudesFiltradas.length > 0 && (
+            <Paginacion
+              paginaActual={paginaActual}
+              totalElementos={solicitudesFiltradas.length}
+              elementosPorPagina={elementosPorPagina}
+              onChangePagina={setPaginaActual}
+            />
+          )}
         </main>
 
         <Footer />
@@ -582,7 +638,7 @@ export default function SolicitudesAsignadas() {
         )}
       </Modal>
 
-      {/* Modal de Historial - NUEVO COMPONENTE */}
+      {/* Modal de Historial */}
       <HistorialModal
         isOpen={modalHistorial}
         onClose={() => setModalHistorial(false)}

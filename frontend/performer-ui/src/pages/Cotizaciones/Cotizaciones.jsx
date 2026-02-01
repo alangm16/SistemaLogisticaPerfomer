@@ -11,6 +11,7 @@ import DropdownActions from '../../components/DropdownActions';
 import StatsGrid from '../../components/StatsGrid';
 import Badge from '../../components/Badge';
 import HistorialModal from '../../components/HistorialModal';
+import Paginacion from '../../components/Paginacion';
 import useWorkflow from '../../hooks/useWorkflow';
 import Swal from 'sweetalert2';
 import '../../styles/dashboard.css';
@@ -26,10 +27,24 @@ export default function Cotizaciones() {
   const [busqueda, setBusqueda] = useState('');
   const [modalHistorial, setModalHistorial] = useState(false);
   const [entidadHistorial, setEntidadHistorial] = useState({tipo: '', id:null});
+  
+  // Estado para paginación
+  const [paginaActual, setPaginaActual] = useState(1);
+  const [elementosPorPagina] = useState(5);
 
   const { validarTransicion } = useWorkflow();
   const rol = localStorage.getItem('rol');
   const nombre = localStorage.getItem('nombre');
+
+  // Permisos según rol
+  const permisos = {
+    puedeCrear: rol === 'PRICING', // Solo PRICING puede crear cotizaciones
+    puedeEditar: rol === 'PRICING', // Solo PRICING puede editar
+    puedeEliminar: rol === 'PRICING', // Solo PRICING puede eliminar
+    puedeCambiarEstado: rol === 'PRICING', // Solo PRICING puede cambiar estados
+    puedeVerHistorial: true, // Todos pueden ver historial
+    puedeVerDetalles: true // Todos pueden ver detalles
+  };
 
   useEffect(() => {
     cargar();
@@ -58,6 +73,16 @@ export default function Cotizaciones() {
   };
 
   const eliminar = async (id) => {
+    // Verificar permisos
+    if (!permisos.puedeEliminar) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Acceso denegado',
+        text: 'No tienes permisos para eliminar cotizaciones.',
+      });
+      return;
+    }
+
     const result = await Swal.fire({
       title: '¿Eliminar cotización?',
       text: 'Esta acción no se puede deshacer.',
@@ -73,6 +98,12 @@ export default function Cotizaciones() {
     try {
       await api.delete(`/cotizaciones/${id}`);
       setCotizaciones(c => c.filter(x => x.id !== id));
+      
+      // Si la última página queda vacía, retroceder a la página anterior
+      const totalPaginas = Math.ceil((cotizaciones.length - 1) / elementosPorPagina);
+      if (paginaActual > totalPaginas && totalPaginas > 0) {
+        setPaginaActual(totalPaginas);
+      }
       
       Swal.fire({
         icon: 'success',
@@ -92,8 +123,17 @@ export default function Cotizaciones() {
   };
 
   const cambiarEstado = async (id, nuevoEstado) => {
-    try {
+    // Verificar permisos
+    if (!permisos.puedeCambiarEstado) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Acceso denegado',
+        text: 'No tienes permisos para cambiar el estado de cotizaciones.',
+      });
+      return;
+    }
 
+    try {
       // Validar workflow
       const entidad = location.pathname.includes('cotizaciones') ? 'COTIZACION' : 'SOLICITUD';
       const estadoActual = cotizaciones.find(s => s.id === id)?.estado;
@@ -146,6 +186,13 @@ export default function Cotizaciones() {
       return coincideBusqueda && coincideFiltro;
     });
   }, [cotizaciones, filtro, busqueda]);
+
+  // Calcular cotizaciones paginadas
+  const cotizacionesPaginadas = useMemo(() => {
+    const startIndex = (paginaActual - 1) * elementosPorPagina;
+    const endIndex = startIndex + elementosPorPagina;
+    return cotizacionesFiltradas.slice(startIndex, endIndex);
+  }, [cotizacionesFiltradas, paginaActual, elementosPorPagina]);
 
   // Configuración de stats
   const statsData = useMemo(() => {
@@ -259,44 +306,57 @@ export default function Cotizaciones() {
     }
   ];
 
-  // Renderizar acciones para DataTable
+  // Renderizar acciones para DataTable - ADAPTADO POR ROL
   const renderActions = (cotizacion) => {
-    const items = [
-      {
+    const items = [];
+
+    // Ver Detalles - Todos pueden ver
+    if (permisos.puedeVerDetalles) {
+      items.push({
         label: 'Ver Detalles',
         icon: 'fa-eye',
         onClick: () => navigate(`/cotizaciones/${cotizacion.id}`)
-      },
-      {
+      });
+    }
+
+    // Ver Historial - Todos pueden ver
+    if (permisos.puedeVerHistorial) {
+      items.push({
         label: 'Ver Historial',
         icon: 'fa-history',
         onClick: () => abrirHistorial(cotizacion)
+      });
+    }
+
+    // Cambios de estado - Solo PRICING
+    if (permisos.puedeCambiarEstado) {
+      if (cotizacion.estado === 'PENDIENTE') {
+        items.push({
+          label: 'Marcar como Enviado',
+          icon: 'fa-paper-plane',
+          onClick: () => cambiarEstado(cotizacion.id, 'ENVIADO')
+        });
       }
-    ];
 
-    if (cotizacion.estado === 'PENDIENTE') {
-      items.push({
-        label: 'Marcar como Enviado',
-        icon: 'fa-paper-plane',
-        onClick: () => cambiarEstado(cotizacion.id, 'ENVIADO')
-      });
+      if (cotizacion.estado === 'ENVIADO') {
+        items.push({
+          label: 'Marcar como Completado',
+          icon: 'fa-check',
+          onClick: () => cambiarEstado(cotizacion.id, 'COMPLETADO')
+        });
+      }
     }
 
-    if (cotizacion.estado === 'ENVIADO') {
+    // Eliminar - Solo PRICING
+    if (permisos.puedeEliminar) {
+      items.push({ divider: true });
       items.push({
-        label: 'Marcar como Completado',
-        icon: 'fa-check',
-        onClick: () => cambiarEstado(cotizacion.id, 'COMPLETADO')
+        label: 'Eliminar',
+        icon: 'fa-trash',
+        onClick: () => eliminar(cotizacion.id),
+        danger: true
       });
     }
-
-    items.push({ divider: true });
-    items.push({
-      label: 'Eliminar',
-      icon: 'fa-trash',
-      onClick: () => eliminar(cotizacion.id),
-      danger: true
-    });
 
     return (
       <DropdownActions
@@ -348,7 +408,8 @@ export default function Cotizaciones() {
             { valor: 'COMPLETADO', label: 'Completadas' },
             { valor: 'CANCELADO', label: 'Canceladas' }
           ]}
-          onAgregarClick={() => navigate('/cotizaciones/nueva')}
+          // Solo mostrar botón de agregar si el usuario tiene permisos (PRICING)
+          onAgregarClick={permisos.puedeCrear ? () => navigate('/cotizaciones/nueva') : undefined}
         />
 
         <main className="main-panel">
@@ -390,15 +451,35 @@ export default function Cotizaciones() {
             </div>
           )}
 
+          {/* Controles de paginación (superior) */}
+          {cotizacionesFiltradas.length > 0 && (
+            <Paginacion
+              paginaActual={paginaActual}
+              totalElementos={cotizacionesFiltradas.length}
+              elementosPorPagina={elementosPorPagina}
+              onChangePagina={setPaginaActual}
+            />
+          )}
+
           {/* Data Table */}
           <DataTable
-            data={cotizacionesFiltradas}
+            data={cotizacionesPaginadas}
             columns={columns}
             onRowClick={handleRowClick}
             renderActions={renderActions}
             emptyMessage="No se encontraron cotizaciones"
             emptyIcon="fa-file-invoice"
           />
+
+          {/* Controles de paginación (inferior) */}
+          {cotizacionesFiltradas.length > 0 && (
+            <Paginacion
+              paginaActual={paginaActual}
+              totalElementos={cotizacionesFiltradas.length}
+              elementosPorPagina={elementosPorPagina}
+              onChangePagina={setPaginaActual}
+            />
+          )}
         </main>
         <Footer />
       </div>

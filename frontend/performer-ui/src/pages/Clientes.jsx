@@ -1,5 +1,5 @@
 // src/pages/Clientes.jsx
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { api } from '../services/api';
 import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
@@ -11,6 +11,7 @@ import Modal from '../components/Modal';
 import FormField from '../components/FormField';
 import StatsGrid from '../components/StatsGrid';
 import Badge from '../components/Badge';
+import Paginacion from '../components/Paginacion'; // Importar componente
 import useForm from '../hooks/useForm';
 import Swal from 'sweetalert2';
 import '../styles/dashboard.css';
@@ -26,6 +27,10 @@ export default function Clientes() {
   const [clienteSeleccionado, setClienteSeleccionado] = useState(null);
   const [filtro, setFiltro] = useState('TODOS');
   const [busqueda, setBusqueda] = useState('');
+
+  // Estado para paginación
+  const [paginaActual, setPaginaActual] = useState(1);
+  const [elementosPorPagina] = useState(5);
 
   // Usar el hook personalizado para el formulario
   const { values: formData, handleChange, resetForm } = useForm({
@@ -43,6 +48,17 @@ export default function Clientes() {
   const rol = localStorage.getItem('rol');
   const nombre = localStorage.getItem('nombre');
 
+  // Permisos según rol - AGREGADO
+  const permisos = useMemo(() => ({
+    puedeCrear: rol === 'VENDEDOR' || rol === 'PRICING', // Solo VENDEDOR y PRICING pueden crear
+    puedeEditar: rol === 'VENDEDOR' || rol === 'PRICING', // Solo VENDEDOR y PRICING pueden editar
+    puedeEliminar: rol === 'ADMIN', // Solo ADMIN puede eliminar (según controller)
+    puedeVerTodo: true, // Todos pueden ver
+    esVendedor: rol === 'VENDEDOR',
+    esPricing: rol === 'PRICING',
+    esAdmin: rol === 'ADMIN'
+  }), [rol]);
+
   useEffect(() => { cargar(); }, []);
 
   const cargar = async () => {
@@ -58,6 +74,16 @@ export default function Clientes() {
   };
 
   const eliminar = async (id) => {
+    // Verificar permisos - AGREGADO
+    if (!permisos.puedeEliminar) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Acceso denegado',
+        text: 'No tienes permisos para eliminar clientes.',
+      });
+      return;
+    }
+
     const result = await Swal.fire({
       title: '¿Eliminar cliente?',
       text: 'Esta acción no se puede deshacer.',
@@ -115,11 +141,31 @@ export default function Clientes() {
   };
 
   const abrirModalNuevo = () => {
+    // Verificar permisos - AGREGADO
+    if (!permisos.puedeCrear) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Acceso denegado',
+        text: 'No tienes permisos para crear nuevos clientes.',
+      });
+      return;
+    }
+    
     resetForm();
     setModalNuevo(true);
   };
 
   const guardarCambios = async () => {
+    // Verificar permisos - AGREGADO
+    if (!permisos.puedeEditar) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Acceso denegado',
+        text: 'No tienes permisos para editar clientes.',
+      });
+      return;
+    }
+
     const result = await Swal.fire({
       title: '¿Guardar cambios?',
       text: `¿Deseas guardar los cambios para ${formData.nombre}?`,
@@ -154,6 +200,16 @@ export default function Clientes() {
   };
 
   const crearCliente = async () => {
+    // Verificar permisos - AGREGADO
+    if (!permisos.puedeCrear) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Acceso denegado',
+        text: 'No tienes permisos para crear clientes.',
+      });
+      return;
+    }
+
     if (!formData.nombre || !formData.email) {
       Swal.fire({
         icon: 'warning',
@@ -195,28 +251,60 @@ export default function Clientes() {
     }
   };
 
-  // Filtrado de clientes
-  const clientesFiltrados = clientes.filter(c => {
-    const coincideBusqueda = 
-      c.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
-      c.email.toLowerCase().includes(busqueda.toLowerCase()) ||
-      (c.rfc && c.rfc.toLowerCase().includes(busqueda.toLowerCase())) ||
-      (c.ciudad && c.ciudad.toLowerCase().includes(busqueda.toLowerCase())) ||
-      (c.telefono && c.telefono.includes(busqueda));
-    
-    const coincideFiltro = filtro === 'TODOS' || 
-      (filtro === 'ACTIVOS' && c.activo) || 
-      (filtro === 'INACTIVOS' && !c.activo);
-    
-    return coincideBusqueda && coincideFiltro;
-  });
+  // Filtrado de clientes con useMemo para optimización
+  const clientesFiltrados = useMemo(() => {
+    return clientes.filter(c => {
+      const coincideBusqueda = 
+        c.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
+        c.email.toLowerCase().includes(busqueda.toLowerCase()) ||
+        (c.rfc && c.rfc.toLowerCase().includes(busqueda.toLowerCase())) ||
+        (c.ciudad && c.ciudad.toLowerCase().includes(busqueda.toLowerCase())) ||
+        (c.telefono && c.telefono.includes(busqueda));
+      
+      const coincideFiltro = filtro === 'TODOS' || 
+        (filtro === 'ACTIVOS' && c.activo) || 
+        (filtro === 'INACTIVOS' && !c.activo);
+      
+      return coincideBusqueda && coincideFiltro;
+    });
+  }, [clientes, filtro, busqueda]);
 
-  // Contadores para las stats
-  const contadores = {
-    total: clientes.length,
-    activos: clientes.filter(c => c.activo).length,
-    inactivos: clientes.filter(c => !c.activo).length,
-  };
+  // Calcular clientes paginados
+  const clientesPaginados = useMemo(() => {
+    const startIndex = (paginaActual - 1) * elementosPorPagina;
+    const endIndex = startIndex + elementosPorPagina;
+    return clientesFiltrados.slice(startIndex, endIndex);
+  }, [clientesFiltrados, paginaActual, elementosPorPagina]);
+
+  // Contadores para las stats con useMemo
+  const statsData = useMemo(() => {
+    const contadores = {
+      total: clientes.length,
+      activos: clientes.filter(c => c.activo).length,
+      inactivos: clientes.filter(c => !c.activo).length,
+    };
+
+    return [
+      {
+        label: 'Total Clientes',
+        value: contadores.total,
+        icon: 'fa-building',
+        iconClass: 'stat-icon-total'
+      },
+      {
+        label: 'Activos',
+        value: contadores.activos,
+        icon: 'fa-circle-check',
+        iconClass: 'stat-icon-activos'
+      },
+      {
+        label: 'Inactivos',
+        value: contadores.inactivos,
+        icon: 'fa-circle-xmark',
+        iconClass: 'stat-icon-inactivos'
+      }
+    ];
+  }, [clientes]);
 
   // Configuración de columnas para DataTable
   const columns = [
@@ -257,34 +345,13 @@ export default function Clientes() {
     }
   ];
 
-  // Configuración de stats para StatsGrid
-  const statsData = [
-    {
-      label: 'Total Clientes',
-      value: contadores.total,
-      icon: 'fa-building',
-      iconClass: 'stat-icon-total'
-    },
-    {
-      label: 'Activos',
-      value: contadores.activos,
-      icon: 'fa-circle-check',
-      iconClass: 'stat-icon-activos'
-    },
-    {
-      label: 'Inactivos',
-      value: contadores.inactivos,
-      icon: 'fa-circle-xmark',
-      iconClass: 'stat-icon-inactivos'
-    }
-  ];
-
   if (loading) {
     return (
       <div className="dashboard-layout">
         <Sidebar rol={rol} />
         <div className="dashboard-content">
           <Header nombre={nombre} rol={rol} />
+          <Subheader titulo="Gestión de Clientes" />
           <main className="main-panel">
             <div className="loading-container">
               <div className="spinner"></div>
@@ -314,7 +381,8 @@ export default function Clientes() {
             { valor: 'ACTIVOS', label: 'Activos' },
             { valor: 'INACTIVOS', label: 'Inactivos' }
           ]}
-          onAgregarClick={abrirModalNuevo}
+          // Solo VENDEDOR y PRICING pueden agregar nuevos clientes - MODIFICADO
+          onAgregarClick={permisos.puedeCrear ? abrirModalNuevo : undefined}
         />
 
         <main className="main-panel">
@@ -358,9 +426,19 @@ export default function Clientes() {
             </div>
           )}
 
-          {/* Data Table */}
+          {/* Controles de paginación (superior) */}
+          {clientesFiltrados.length > 0 && (
+            <Paginacion
+              paginaActual={paginaActual}
+              totalElementos={clientesFiltrados.length}
+              elementosPorPagina={elementosPorPagina}
+              onChangePagina={setPaginaActual}
+            />
+          )}
+
+          {/* Data Table con acciones condicionales - MODIFICADO */}
           <DataTable
-            data={clientesFiltrados}
+            data={clientesPaginados}
             columns={columns}
             renderActions={(cliente) => (
               <DropdownActions
@@ -370,25 +448,36 @@ export default function Clientes() {
                     icon: 'fa-eye',
                     onClick: () => abrirModal(cliente)
                   },
-                  { divider: true },
-                  {
+                  // Solo mostrar opción de eliminar si el usuario tiene permisos - AGREGADO
+                  ...(permisos.puedeEliminar ? [{ divider: true }] : []),
+                  ...(permisos.puedeEliminar ? [{
                     label: 'Eliminar',
                     icon: 'fa-trash',
                     onClick: () => eliminar(cliente.id),
                     danger: true
-                  }
+                  }] : [])
                 ]}
               />
             )}
             emptyMessage="No se encontraron clientes"
             emptyIcon="fa-building-slash"
           />
+
+          {/* Controles de paginación (inferior) */}
+          {clientesFiltrados.length > 0 && (
+            <Paginacion
+              paginaActual={paginaActual}
+              totalElementos={clientesFiltrados.length}
+              elementosPorPagina={elementosPorPagina}
+              onChangePagina={setPaginaActual}
+            />
+          )}
         </main>
 
         <Footer />
       </div>
 
-      {/* Modal de Edición */}
+      {/* Modal de Edición con botones condicionales - MODIFICADO */}
       <Modal
         isOpen={modalAbierto && clienteSeleccionado}
         onClose={cerrarModal}
@@ -396,18 +485,24 @@ export default function Clientes() {
         large={true}
         footer={
           <>
-            <button className="btn btn-danger" onClick={() => eliminar(clienteSeleccionado.id)}>
-              <i className="fa-solid fa-trash"></i>
-              Eliminar
-            </button>
+            {/* Solo ADMIN ve botón Eliminar - AGREGADO */}
+            {permisos.puedeEliminar && (
+              <button className="btn btn-danger" onClick={() => eliminar(clienteSeleccionado.id)}>
+                <i className="fa-solid fa-trash"></i>
+                Eliminar
+              </button>
+            )}
             <button className="btn btn-secondary" onClick={cerrarModal}>
               <i className="fa-solid fa-times"></i>
               Cancelar
             </button>
-            <button className="btn btn-primary" onClick={guardarCambios}>
-              <i className="fa-solid fa-save"></i>
-              Guardar
-            </button>
+            {/* Solo VENDEDOR y PRICING ven botón Guardar - AGREGADO */}
+            {permisos.puedeEditar && (
+              <button className="btn btn-primary" onClick={guardarCambios}>
+                <i className="fa-solid fa-save"></i>
+                Guardar
+              </button>
+            )}
           </>
         }
       >
@@ -510,7 +605,7 @@ export default function Clientes() {
         />
       </Modal>
 
-      {/* Modal de Nuevo Cliente */}
+      {/* Modal de Nuevo Cliente con botones condicionales - MODIFICADO */}
       <Modal
         isOpen={modalNuevo}
         onClose={cerrarModal}
@@ -522,10 +617,13 @@ export default function Clientes() {
               <i className="fa-solid fa-times"></i>
               Cancelar
             </button>
-            <button className="btn btn-primary" onClick={crearCliente}>
-              <i className="fa-solid fa-plus"></i>
-              Crear
-            </button>
+            {/* Solo VENDEDOR y PRICING ven botón Crear - AGREGADO */}
+            {permisos.puedeCrear && (
+              <button className="btn btn-primary" onClick={crearCliente}>
+                <i className="fa-solid fa-plus"></i>
+                Crear
+              </button>
+            )}
           </>
         }
       >

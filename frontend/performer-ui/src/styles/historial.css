@@ -1,10 +1,7 @@
-/* Agregar al final del archivo generales.css */
+/* historial.css - Optimizado */
 
 /* HISTORIAL TIMELINE */
-.historial-timeline {
-  position: relative;
-  padding-left: 2rem;
-}
+.historial-timeline { position: relative; padding-left: 2rem; }
 
 .historial-timeline::before {
   content: '';
@@ -17,11 +14,7 @@
   opacity: 0.3;
 }
 
-.timeline-item {
-  position: relative;
-  margin-bottom: 1.5rem;
-  padding-left: 1rem;
-}
+.timeline-item { position: relative; margin-bottom: 1.5rem; padding-left: 1rem; }
 
 .timeline-marker {
   position: absolute;
@@ -39,9 +32,7 @@
   z-index: 1;
 }
 
-.timeline-marker i {
-  font-size: 0.9rem;
-}
+.timeline-marker i { font-size: 0.9rem; }
 
 .timeline-content {
   background: var(--gray-light);
@@ -51,10 +42,7 @@
   transition: all 0.2s ease;
 }
 
-.timeline-content:hover {
-  transform: translateX(5px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-}
+.timeline-content:hover { transform: translateX(5px); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); }
 
 .timeline-header {
   display: flex;
@@ -65,31 +53,13 @@
   gap: 0.5rem;
 }
 
-.timeline-action .badge {
-  font-size: 0.7rem;
-  padding: 0.3rem 0.7rem;
-}
+.timeline-action .badge { font-size: 0.7rem; padding: 0.3rem 0.7rem; }
+.timeline-date { font-size: 0.8rem; color: var(--gray-text); font-weight: 600; }
+.timeline-body { font-size: 0.9rem; }
 
-.timeline-date {
-  font-size: 0.8rem;
-  color: var(--gray-text);
-  font-weight: 600;
-}
+.timeline-detail { margin-bottom: 0.5rem; display: flex; gap: 0.5rem; }
 
-.timeline-body {
-  font-size: 0.9rem;
-}
-
-.timeline-detail {
-  margin-bottom: 0.5rem;
-  display: flex;
-  gap: 0.5rem;
-}
-
-.timeline-detail strong {
-  color: var(--purple-dark);
-  min-width: 70px;
-}
+.timeline-detail strong { color: var(--purple-dark); min-width: 70px; }
 
 /* RESUMEN DE HISTORIAL */
 .historial-resumen {
@@ -123,14 +93,105 @@
   font-weight: 700;
 }
 
-.resumen-value {
-  font-size: 1.8rem;
-  font-weight: 800;
-  color: var(--purple-dark);
-}
+.resumen-value { font-size: 1.8rem; font-weight: 800; color: var(--purple-dark); }
 
 /* BADGE PARA ACCIONES DE HISTORIAL */
-.badge-info {
-  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
-  color: #1e40af;
+.badge-info { background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); color: #1e40af; }
+
+/* RESPONSIVE COMPLETO */
+@media (max-width: 1200px) {
+  .historial-timeline { padding-left: 1.75rem; }
+  .historial-timeline::before { left: 0.875rem; }
+  .timeline-marker { left: -1.75rem; width: 2.3rem; height: 2.3rem; }
+  .timeline-content { padding: 1.1rem; }
+  .resumen-grid { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.875rem; }
+}
+
+@media (max-width: 992px) {
+  .historial-resumen { padding: 1.25rem; margin-bottom: 1.5rem; }
+  .resumen-grid { grid-template-columns: repeat(2, 1fr); }
+  .resumen-item { padding: 0.875rem; }
+  .resumen-value { font-size: 1.6rem; }
+  .timeline-header { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
+}
+
+@media (max-width: 768px) {
+  .historial-timeline { padding-left: 1.5rem; }
+  .historial-timeline::before { left: 0.75rem; }
+  .timeline-marker { left: -1.6rem; width: 2rem; height: 2rem; }
+  .timeline-marker i { font-size: 0.8rem; }
+  .timeline-item { margin-bottom: 1.25rem; padding-left: 0.75rem; }
+  .timeline-content { padding: 1rem; }
+  .timeline-date { font-size: 0.75rem; }
+  .timeline-body { font-size: 0.85rem; }
+  .timeline-detail { flex-direction: column; gap: 0.25rem; }
+  .timeline-detail strong { min-width: auto; }
+  .resumen-grid { grid-template-columns: 1fr; }
+  .historial-resumen { padding: 1rem; }
+}
+
+@media (max-width: 576px) {
+  .historial-timeline { padding-left: 1.25rem; }
+  .historial-timeline::before { left: 0.625rem; }
+  .timeline-marker { left: -1.4rem; width: 1.8rem; height: 1.8rem; border-width: 2px; }
+  .timeline-content:hover { transform: translateX(3px); }
+  .timeline-action .badge { font-size: 0.65rem; padding: 0.25rem 0.6rem; }
+  .resumen-item { padding: 0.75rem; }
+  .resumen-label { font-size: 0.75rem; margin-bottom: 0.4rem; }
+  .resumen-value { font-size: 1.4rem; }
+  .badge-info { font-size: 0.65rem !important; padding: 0.25rem 0.6rem !important; }
+}
+
+@media (max-width: 480px) {
+  .historial-timeline { padding-left: 1rem; }
+  .historial-timeline::before { left: 0.5rem; width: 1px; }
+  .timeline-marker { left: -1.2rem; width: 1.6rem; height: 1.6rem; }
+  .timeline-marker i { font-size: 0.7rem; }
+  .timeline-item { margin-bottom: 1rem; }
+  .timeline-content { padding: 0.875rem; }
+  .timeline-header { margin-bottom: 0.5rem; }
+  .timeline-date { font-size: 0.7rem; }
+  .timeline-body { font-size: 0.8rem; }
+  .timeline-detail strong { font-size: 0.8rem; }
+  .historial-resumen { padding: 0.875rem; margin-bottom: 1rem; border-width: 1px; }
+  .resumen-grid { gap: 0.75rem; }
+  .resumen-item { padding: 0.625rem; }
+  .resumen-value { font-size: 1.2rem; }
+}
+
+@media (max-width: 360px) {
+  .historial-timeline { padding-left: 0.875rem; }
+  .timeline-marker { left: -1rem; width: 1.4rem; height: 1.4rem; }
+  .timeline-content { padding: 0.75rem; }
+  .timeline-header { flex-direction: column; align-items: stretch; }
+  .timeline-action { align-self: flex-start; }
+  .resumen-grid { grid-template-columns: 1fr; }
+  .resumen-item { padding: 0.5rem; }
+  .resumen-label { font-size: 0.7rem; }
+  .resumen-value { font-size: 1.1rem; }
+}
+
+@media (max-width: 320px) {
+  .historial-timeline { padding-left: 0.75rem; }
+  .timeline-marker { left: -0.9rem; width: 1.3rem; height: 1.3rem; }
+  .timeline-marker i { font-size: 0.6rem; }
+  .timeline-content { padding: 0.625rem; }
+  .timeline-date { font-size: 0.65rem; }
+  .timeline-body { font-size: 0.75rem; }
+  .historial-resumen { padding: 0.75rem; }
+  .resumen-value { font-size: 1rem; }
+}
+
+/* Touch optimizations */
+@media (hover: none) and (pointer: coarse) {
+  .timeline-content:hover { transform: none; }
+  .timeline-content:active { transform: translateX(3px); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); }
+}
+
+/* Print styles */
+@media print {
+  .historial-timeline::before { background: #ccc; opacity: 0.5; }
+  .timeline-content { background: #f9f9f9; border: 1px solid #ddd; box-shadow: none; }
+  .timeline-content:hover { transform: none; box-shadow: none; }
+  .badge-info { background: #e8f4fd !important; color: #333 !important; }
 }

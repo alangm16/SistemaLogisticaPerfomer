@@ -29,13 +29,13 @@ public class ClienteController {
                 .orElseThrow(() -> new RuntimeException("Cliente no encontrado con id " + id));
     }
 
-    @PreAuthorize("hasAnyRole('VENDEDOR','PRICING','ADMIN')") 
+    @PreAuthorize("hasAnyRole('VENDEDOR','PRICING')") 
     @PostMapping
     public Cliente crear(@RequestBody Cliente cliente) {
         return clienteService.guardar(cliente);
     }
 
-    @PreAuthorize("hasAnyRole('VENDEDOR','PRICING','ADMIN')") 
+    @PreAuthorize("hasAnyRole('VENDEDOR','PRICING')") 
     @PutMapping("/{id}")
     public Cliente actualizar(@PathVariable Long id, @RequestBody Cliente cliente) {
         return clienteService.actualizar(id, cliente);

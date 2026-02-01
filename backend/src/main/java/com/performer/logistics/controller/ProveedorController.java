@@ -29,13 +29,13 @@ public class ProveedorController {
                 .orElseThrow(() -> new RuntimeException("Proveedor no encontrado con id " + id));
     }
 
-    @PreAuthorize("hasAnyRole('VENDEDOR','PRICING','ADMIN')") 
+    @PreAuthorize("hasAnyRole('VENDEDOR','PRICING')") 
     @PostMapping
     public Proveedor crear(@RequestBody Proveedor proveedor) {
         return proveedorService.guardar(proveedor);
     }
 
-    @PreAuthorize("hasAnyRole('VENDEDOR','PRICING','ADMIN')") 
+    @PreAuthorize("hasAnyRole('VENDEDOR','PRICING')") 
     @PutMapping("/{id}")
     public Proveedor actualizar(@PathVariable Long id, @RequestBody Proveedor proveedor) {
         return proveedorService.actualizar(id, proveedor);

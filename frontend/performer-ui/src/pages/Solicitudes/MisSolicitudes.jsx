@@ -1,4 +1,4 @@
-// src/pages/solicitudes/MisSolicitudes.jsx - VERSIÓN OPTIMIZADA
+// src/pages/solicitudes/MisSolicitudes.jsx
 import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../../services/api';
@@ -12,6 +12,7 @@ import Modal from '../../components/Modal';
 import Badge from '../../components/Badge';
 import StatsGrid from '../../components/StatsGrid';
 import HistorialModal from '../../components/HistorialModal';
+import Paginacion from '../../components/Paginacion'; // Importar componente
 import useWorkflow from '../../hooks/useWorkflow';
 import Swal from 'sweetalert2';
 import authHeader from '../../services/authHeader';
@@ -30,9 +31,27 @@ export default function MisSolicitudes() {
   const [solicitudSeleccionada, setSolicitudSeleccionada] = useState(null);
   const [modalHistorial, setModalHistorial] = useState(false);
   const [entidadHistorial, setEntidadHistorial] = useState({ tipo: '', id: null });
+  
+  // Estado para paginación
+  const [paginaActual, setPaginaActual] = useState(1);
+  const [elementosPorPagina] = useState(5);
+  
   const rol = localStorage.getItem('rol');
   const nombre = localStorage.getItem('nombre');
+  
+  // Permisos según rol - AGREGADO
+  const permisos = {
+    puedeCambiarEstado: rol === 'VENDEDOR' || rol === 'PRICING', // Solo VENDEDOR y PRICING pueden cambiar estado
+    puedeCrear: rol === 'VENDEDOR', // Solo VENDEDOR puede crear nuevas solicitudes
+    puedeVerHistorial: true, // Todos pueden ver historial
+    puedeVerDetalles: true, // Todos pueden ver detalles
+    esVendedor: rol === 'VENDEDOR',
+    esPricing: rol === 'PRICING',
+    esAdmin: rol === 'ADMIN'
+  };
+  
   const { validarTransicion } = useWorkflow();
+  
   useEffect(() => {
     cargarSolicitudes();
   }, []);
@@ -46,7 +65,6 @@ export default function MisSolicitudes() {
     });
     setModalHistorial(true);
   };
-
 
   const cargarSolicitudes = async () => {
     try {
@@ -84,6 +102,13 @@ export default function MisSolicitudes() {
     return resultado;
   }, [solicitudes, filtro, busqueda]);
 
+  // Calcular solicitudes paginadas
+  const solicitudesPaginadas = useMemo(() => {
+    const startIndex = (paginaActual - 1) * elementosPorPagina;
+    const endIndex = startIndex + elementosPorPagina;
+    return solicitudesFiltradas.slice(startIndex, endIndex);
+  }, [solicitudesFiltradas, paginaActual, elementosPorPagina]);
+
   const abrirDetalle = async (solicitud) => {
     try {
       const res = await api.get(`/solicitudes/${solicitud.id}`);
@@ -105,6 +130,16 @@ export default function MisSolicitudes() {
   };
 
   const cambiarEstado = async (id, nuevoEstado) => {
+    // Verificar permisos
+    if (!permisos.puedeCambiarEstado) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Acceso denegado',
+        text: 'No tienes permisos para cambiar el estado de solicitudes.',
+      });
+      return;
+    }
+
     // Validar workflow
     const entidad = location.pathname.includes('cotizaciones') ? 'COTIZACION' : 'SOLICITUD';
     const estadoActual = solicitudes.find(s => s.id === id)?.estado;
@@ -272,7 +307,7 @@ export default function MisSolicitudes() {
     }
   ];
 
-  // Renderizar acciones para DataTable
+  // Renderizar acciones para DataTable - MODIFICADO CON PERMISOS
   const renderActions = (solicitud) => {
     const items = [
       {
@@ -287,7 +322,8 @@ export default function MisSolicitudes() {
       }
     ];
 
-    if (solicitud.estado === 'PENDIENTE') {
+    // Solo VENDEDOR y PRICING pueden cambiar estado (solo pendientes)
+    if (permisos.puedeCambiarEstado && solicitud.estado === 'PENDIENTE') {
       items.push({ divider: true });
       items.push(
         {
@@ -350,7 +386,8 @@ export default function MisSolicitudes() {
             { valor: 'COMPLETADO', label: 'Completadas' },
             { valor: 'CANCELADO', label: 'Canceladas' }
           ]}
-          onAgregarClick={() => navigate('/solicitudes/nueva')}
+          // Solo VENDEDOR ve botón de Nueva Solicitud
+          onAgregarClick={permisos.puedeCrear ? () => navigate('/solicitudes/nueva') : undefined}
         />
         
         <main className="main-panel">
@@ -392,15 +429,25 @@ export default function MisSolicitudes() {
             </div>
           )}
 
+          {/* Controles de paginación (superior) */}
+          {solicitudesFiltradas.length > 0 && (
+            <Paginacion
+              paginaActual={paginaActual}
+              totalElementos={solicitudesFiltradas.length}
+              elementosPorPagina={elementosPorPagina}
+              onChangePagina={setPaginaActual}
+            />
+          )}
+
           {/* Data Table */}
           <DataTable
-            data={solicitudesFiltradas}
+            data={solicitudesPaginadas}
             columns={columns}
             renderActions={renderActions}
             emptyMessage="No se encontraron solicitudes"
             emptyIcon="fa-inbox"
             emptyAction={
-              solicitudes.length === 0 && (
+              solicitudes.length === 0 && permisos.puedeCrear && (
                 <button 
                   className="btn btn-primary"
                   onClick={() => navigate('/solicitudes/nueva')}
@@ -412,6 +459,16 @@ export default function MisSolicitudes() {
               )
             }
           />
+
+          {/* Controles de paginación (inferior) */}
+          {solicitudesFiltradas.length > 0 && (
+            <Paginacion
+              paginaActual={paginaActual}
+              totalElementos={solicitudesFiltradas.length}
+              elementosPorPagina={elementosPorPagina}
+              onChangePagina={setPaginaActual}
+            />
+          )}
         </main>
         
         <Footer />

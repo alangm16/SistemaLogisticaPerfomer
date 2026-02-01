@@ -1,4 +1,4 @@
-// src/pages/Cotizaciones/DetallesCotizacion.jsx - VERSIÓN OPTIMIZADA
+// src/pages/Cotizaciones/DetallesCotizacion.jsx
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { api } from '../../services/api';
@@ -13,7 +13,6 @@ import Swal from 'sweetalert2';
 import '../../styles/dashboard.css';
 import '../../styles/cotizaciones.css';
 import '../../styles/generales.css';
-import Cotizaciones from './Cotizaciones';
 
 export default function DetallesCotizacion() {
   const navigate = useNavigate();
@@ -38,6 +37,14 @@ export default function DetallesCotizacion() {
 
   const rol = localStorage.getItem('rol');
   const nombre = localStorage.getItem('nombre');
+
+  // Permisos según rol
+  const permisos = {
+    puedeEditar: rol === 'PRICING', // Solo PRICING puede editar
+    puedeEliminar: rol === 'PRICING', // Solo PRICING puede eliminar
+    puedeCambiarEstado: rol === 'PRICING', // Solo PRICING puede cambiar estados
+    puedeVerHistorial: true, // Todos pueden ver historial
+  };
 
   useEffect(() => { cargarCotizacion(); }, [id]);
 
@@ -88,7 +95,30 @@ export default function DetallesCotizacion() {
     }));
   };
 
+  const activarModoEdicion = () => {
+    // Verificar permisos antes de activar modo edición
+    if (!permisos.puedeEditar) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Acceso denegado',
+        text: 'No tienes permisos para editar cotizaciones.',
+      });
+      return;
+    }
+    setModoEdicion(true);
+  };
+
   const guardarCambios = async () => {
+    // Verificar permisos
+    if (!permisos.puedeEditar) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Acceso denegado',
+        text: 'No tienes permisos para editar cotizaciones.',
+      });
+      return;
+    }
+
     const result = await Swal.fire({
       title: '¿Guardar cambios?',
       text: '¿Deseas guardar los cambios en esta cotización?',
@@ -131,20 +161,30 @@ export default function DetallesCotizacion() {
   };
 
   const cambiarEstado = async (nuevoEstado) => {
-    try {
-
-    // Validar workflow
-    const entidad = location.pathname.includes('cotizaciones') ? 'COTIZACION' : 'SOLICITUD';
-    const estadoActual = cotizacion.find(s => s.id === id)?.estado;
-    
-    if (!validarTransicion(entidad, estadoActual, nuevoEstado)) {
+    // Verificar permisos
+    if (!permisos.puedeCambiarEstado) {
       Swal.fire({
         icon: 'error',
-        title: 'Transición no permitida',
-        text: `No se puede cambiar de ${estadoActual} a ${nuevoEstado}`,
+        title: 'Acceso denegado',
+        text: 'No tienes permisos para cambiar el estado de cotizaciones.',
       });
       return;
     }
+
+    try {
+      // Validar workflow
+      const entidad = 'COTIZACION';
+      const estadoActual = cotizacion.estado;
+      
+      if (!validarTransicion(entidad, estadoActual, nuevoEstado)) {
+        Swal.fire({
+          icon: 'error',
+          title: 'Transición no permitida',
+          text: `No se puede cambiar de ${estadoActual} a ${nuevoEstado}`,
+        });
+        return;
+      }
+      
       const payload = { ...cotizacion, estado: nuevoEstado };
       await api.put(`/cotizaciones/${id}`, payload);
       await cargarCotizacion();
@@ -167,6 +207,16 @@ export default function DetallesCotizacion() {
   };
 
   const eliminar = async () => {
+    // Verificar permisos
+    if (!permisos.puedeEliminar) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Acceso denegado',
+        text: 'No tienes permisos para eliminar cotizaciones.',
+      });
+      return;
+    }
+
     const result = await Swal.fire({
       title: '¿Eliminar cotización?',
       text: 'Esta acción no se puede deshacer.',
@@ -208,38 +258,25 @@ export default function DetallesCotizacion() {
         </div>
         <h3 className="info-section-title">{title}</h3>
       </div>
-      <div className="info-section-body">{children}</div>
+      <div className="info-section-content">{children}</div>
     </div>
   );
 
   const InfoRow = ({ icon, label, value, highlight = false }) => (
-    <div className="info-row">
-      <span className="info-row-label">
+    <div className={`info-row ${highlight ? 'highlight' : ''}`}>
+      <div className="info-row-label">
         <i className={`fa-solid ${icon}`}></i>
-        {label}
-      </span>
-      <span className={`info-row-value ${highlight ? 'highlight' : ''}`}>
-        {value}
-      </span>
+        <span>{label}</span>
+      </div>
+      <div className="info-row-value">{value}</div>
     </div>
   );
 
   const HeaderDetail = ({ label, value }) => (
-    <div className="header-detail-item">
+    <div className="header-detail">
       <span className="header-detail-label">{label}</span>
       <span className="header-detail-value">{value}</span>
     </div>
-  );
-
-  const ActionButtonHistorial = () => (
-    <button 
-      className="btn btn-secondary"
-      onClick={() => setModalHistorial(true)}
-      style={{ marginLeft: 'auto' }}
-    >
-      <i className="fa-solid fa-history"></i>
-      Ver Historial Completo
-    </button>
   );
 
   const ActionButton = ({ onClick, icon, label, type = 'primary' }) => (
@@ -247,6 +284,15 @@ export default function DetallesCotizacion() {
       <i className={`fa-solid ${icon}`}></i>
       {label}
     </button>
+  );
+
+  const ActionButtonHistorial = () => (
+    <ActionButton 
+      onClick={() => setModalHistorial(true)} 
+      icon="fa-history" 
+      label="Ver Historial" 
+      type="secondary"
+    />
   );
 
   if (loading) {
@@ -258,7 +304,7 @@ export default function DetallesCotizacion() {
           <main className="main-panel">
             <div className="loading-container">
               <div className="spinner"></div>
-              <p>Cargando cotización...</p>
+              <p>Cargando...</p>
             </div>
           </main>
           <Footer />
@@ -404,20 +450,24 @@ export default function DetallesCotizacion() {
             </div>
           </div>
 
-          {/* Acciones */}
+          {/* Acciones - ADAPTADO POR ROL */}
           <div className="detalles-actions">
             {!modoEdicion ? (
               <>
-                <ActionButton 
-                  onClick={() => setModoEdicion(true)} 
-                  icon="fa-edit" 
-                  label="Editar" 
-                />
+                {/* Botón Editar - Solo PRICING */}
+                {permisos.puedeEditar && (
+                  <ActionButton 
+                    onClick={activarModoEdicion} 
+                    icon="fa-edit" 
+                    label="Editar" 
+                  />
+                )}
 
-                {/* Botón de Historial */ }
-                <ActionButtonHistorial />
+                {/* Botón de Historial - Todos pueden ver */}
+                {permisos.puedeVerHistorial && <ActionButtonHistorial />}
                 
-                {cotizacion.estado === 'PENDIENTE' && (
+                {/* Cambios de estado - Solo PRICING */}
+                {permisos.puedeCambiarEstado && cotizacion.estado === 'PENDIENTE' && (
                   <ActionButton 
                     onClick={() => cambiarEstado('ENVIADO')} 
                     icon="fa-paper-plane" 
@@ -426,7 +476,7 @@ export default function DetallesCotizacion() {
                   />
                 )}
 
-                {cotizacion.estado === 'ENVIADO' && (
+                {permisos.puedeCambiarEstado && cotizacion.estado === 'ENVIADO' && (
                   <ActionButton 
                     onClick={() => cambiarEstado('COMPLETADO')} 
                     icon="fa-check" 
@@ -435,12 +485,15 @@ export default function DetallesCotizacion() {
                   />
                 )}
 
-                <ActionButton 
-                  onClick={eliminar} 
-                  icon="fa-trash" 
-                  label="Eliminar" 
-                  type="danger"
-                />
+                {/* Botón Eliminar - Solo PRICING */}
+                {permisos.puedeEliminar && (
+                  <ActionButton 
+                    onClick={eliminar} 
+                    icon="fa-trash" 
+                    label="Eliminar" 
+                    type="danger"
+                  />
+                )}
               </>
             ) : (
               <>

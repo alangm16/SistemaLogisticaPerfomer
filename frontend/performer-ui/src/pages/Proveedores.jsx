@@ -1,5 +1,5 @@
-// src/pages/Proveedores.jsx - VERSIÓN OPTIMIZADA
-import { useEffect, useState } from 'react';
+// src/pages/Proveedores.jsx
+import { useEffect, useState, useMemo } from 'react';
 import { api } from '../services/api';
 import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
@@ -11,6 +11,7 @@ import Modal from '../components/Modal';
 import FormField from '../components/FormField';
 import StatsGrid from '../components/StatsGrid';
 import Badge from '../components/Badge';
+import Paginacion from '../components/Paginacion';
 import useForm from '../hooks/useForm';
 import Swal from 'sweetalert2';
 import '../styles/dashboard.css';
@@ -27,6 +28,10 @@ export default function Proveedores() {
   const [filtro, setFiltro] = useState('TODOS');
   const [busqueda, setBusqueda] = useState('');
 
+  // Estado para paginación
+  const [paginaActual, setPaginaActual] = useState(1);
+  const [elementosPorPagina] = useState(5);
+
   // Usar el hook personalizado para el formulario
   const { values: formData, handleChange, resetForm } = useForm({
     nombre: '',
@@ -39,6 +44,17 @@ export default function Proveedores() {
 
   const rol = localStorage.getItem('rol');
   const nombre = localStorage.getItem('nombre');
+
+  // Permisos según rol - AGREGADO
+  const permisos = useMemo(() => ({
+    puedeCrear: rol === 'VENDEDOR' || rol === 'PRICING', // Solo VENDEDOR y PRICING pueden crear
+    puedeEditar: rol === 'VENDEDOR' || rol === 'PRICING', // Solo VENDEDOR y PRICING pueden editar
+    puedeEliminar: rol === 'ADMIN', // Solo ADMIN puede eliminar (según controller)
+    puedeVerTodo: true, // Todos pueden ver
+    esVendedor: rol === 'VENDEDOR',
+    esPricing: rol === 'PRICING',
+    esAdmin: rol === 'ADMIN'
+  }), [rol]);
 
   useEffect(() => { cargar(); }, []);
 
@@ -55,6 +71,16 @@ export default function Proveedores() {
   };
 
   const eliminar = async (id) => {
+    // Verificar permisos - AGREGADO
+    if (!permisos.puedeEliminar) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Acceso denegado',
+        text: 'No tienes permisos para eliminar proveedores.',
+      });
+      return;
+    }
+
     const result = await Swal.fire({
       title: '¿Eliminar proveedor?',
       text: 'Esta acción no se puede deshacer.',
@@ -109,11 +135,31 @@ export default function Proveedores() {
   };
 
   const abrirModalNuevo = () => {
+    // Verificar permisos - AGREGADO
+    if (!permisos.puedeCrear) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Acceso denegado',
+        text: 'No tienes permisos para crear nuevos proveedores.',
+      });
+      return;
+    }
+    
     resetForm();
     setModalNuevo(true);
   };
 
   const guardarCambios = async () => {
+    // Verificar permisos - AGREGADO
+    if (!permisos.puedeEditar) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Acceso denegado',
+        text: 'No tienes permisos para editar proveedores.',
+      });
+      return;
+    }
+
     const result = await Swal.fire({
       title: '¿Guardar cambios?',
       text: `¿Deseas guardar los cambios para ${formData.nombre}?`,
@@ -148,6 +194,16 @@ export default function Proveedores() {
   };
 
   const crearProveedor = async () => {
+    // Verificar permisos - AGREGADO
+    if (!permisos.puedeCrear) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Acceso denegado',
+        text: 'No tienes permisos para crear proveedores.',
+      });
+      return;
+    }
+
     if (!formData.nombre) {
       Swal.fire({
         icon: 'warning',
@@ -189,27 +245,59 @@ export default function Proveedores() {
     }
   };
 
-  // Filtrado de proveedores
-  const proveedoresFiltrados = proveedores.filter(p => {
-    const coincideBusqueda =
-      p.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
-      (p.email && p.email.toLowerCase().includes(busqueda.toLowerCase())) ||
-      (p.pais && p.pais.toLowerCase().includes(busqueda.toLowerCase())) ||
-      (p.ciudad && p.ciudad.toLowerCase().includes(busqueda.toLowerCase()));
-    
-    const coincideFiltro = filtro === 'TODOS' ||
-      (filtro === 'ACTIVOS' && p.activo) ||
-      (filtro === 'INACTIVOS' && !p.activo);
-    
-    return coincideBusqueda && coincideFiltro;
-  });
+  // Filtrado de proveedores con useMemo para optimización
+  const proveedoresFiltrados = useMemo(() => {
+    return proveedores.filter(p => {
+      const coincideBusqueda =
+        p.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
+        (p.email && p.email.toLowerCase().includes(busqueda.toLowerCase())) ||
+        (p.pais && p.pais.toLowerCase().includes(busqueda.toLowerCase())) ||
+        (p.ciudad && p.ciudad.toLowerCase().includes(busqueda.toLowerCase()));
+      
+      const coincideFiltro = filtro === 'TODOS' ||
+        (filtro === 'ACTIVOS' && p.activo) ||
+        (filtro === 'INACTIVOS' && !p.activo);
+      
+      return coincideBusqueda && coincideFiltro;
+    });
+  }, [proveedores, filtro, busqueda]);
 
-  // Contadores para las stats
-  const contadores = {
-    total: proveedores.length,
-    activos: proveedores.filter(p => p.activo).length,
-    inactivos: proveedores.filter(p => !p.activo).length,
-  };
+  // Calcular proveedores paginados
+  const proveedoresPaginados = useMemo(() => {
+    const startIndex = (paginaActual - 1) * elementosPorPagina;
+    const endIndex = startIndex + elementosPorPagina;
+    return proveedoresFiltrados.slice(startIndex, endIndex);
+  }, [proveedoresFiltrados, paginaActual, elementosPorPagina]);
+
+  // Contadores para las stats con useMemo
+  const statsData = useMemo(() => {
+    const contadores = {
+      total: proveedores.length,
+      activos: proveedores.filter(p => p.activo).length,
+      inactivos: proveedores.filter(p => !p.activo).length,
+    };
+
+    return [
+      {
+        label: 'Total Proveedores',
+        value: contadores.total,
+        icon: 'fa-truck',
+        iconClass: 'stat-icon-total'
+      },
+      {
+        label: 'Activos',
+        value: contadores.activos,
+        icon: 'fa-circle-check',
+        iconClass: 'stat-icon-activos'
+      },
+      {
+        label: 'Inactivos',
+        value: contadores.inactivos,
+        icon: 'fa-circle-xmark',
+        iconClass: 'stat-icon-inactivos'
+      }
+    ];
+  }, [proveedores]);
 
   // Configuración de columnas para DataTable
   const columns = [
@@ -250,34 +338,13 @@ export default function Proveedores() {
     }
   ];
 
-  // Configuración de stats para StatsGrid
-  const statsData = [
-    {
-      label: 'Total Proveedores',
-      value: contadores.total,
-      icon: 'fa-truck',
-      iconClass: 'stat-icon-total'
-    },
-    {
-      label: 'Activos',
-      value: contadores.activos,
-      icon: 'fa-circle-check',
-      iconClass: 'stat-icon-activos'
-    },
-    {
-      label: 'Inactivos',
-      value: contadores.inactivos,
-      icon: 'fa-circle-xmark',
-      iconClass: 'stat-icon-inactivos'
-    }
-  ];
-
   if (loading) {
     return (
       <div className="dashboard-layout">
         <Sidebar rol={rol} />
         <div className="dashboard-content">
           <Header nombre={nombre} rol={rol} />
+          <Subheader titulo="Gestión de Proveedores" />
           <main className="main-panel">
             <div className="loading-container">
               <div className="spinner"></div>
@@ -307,7 +374,8 @@ export default function Proveedores() {
             { valor: 'ACTIVOS', label: 'Activos' },
             { valor: 'INACTIVOS', label: 'Inactivos' }
           ]}
-          onAgregarClick={abrirModalNuevo}
+          // Solo VENDEDOR y PRICING pueden agregar nuevos proveedores - MODIFICADO
+          onAgregarClick={permisos.puedeCrear ? abrirModalNuevo : undefined}
         />
 
         <main className="main-panel">
@@ -351,9 +419,19 @@ export default function Proveedores() {
             </div>
           )}
 
-          {/* Data Table */}
+          {/* Controles de paginación (superior) */}
+          {proveedoresFiltrados.length > 0 && (
+            <Paginacion
+              paginaActual={paginaActual}
+              totalElementos={proveedoresFiltrados.length}
+              elementosPorPagina={elementosPorPagina}
+              onChangePagina={setPaginaActual}
+            />
+          )}
+
+          {/* Data Table con acciones condicionales - MODIFICADO */}
           <DataTable
-            data={proveedoresFiltrados}
+            data={proveedoresPaginados}
             columns={columns}
             renderActions={(proveedor) => (
               <DropdownActions
@@ -363,25 +441,36 @@ export default function Proveedores() {
                     icon: 'fa-eye',
                     onClick: () => abrirModal(proveedor)
                   },
-                  { divider: true },
-                  {
+                  // Solo mostrar opción de eliminar si el usuario tiene permisos - AGREGADO
+                  ...(permisos.puedeEliminar ? [{ divider: true }] : []),
+                  ...(permisos.puedeEliminar ? [{
                     label: 'Eliminar',
                     icon: 'fa-trash',
                     onClick: () => eliminar(proveedor.id),
                     danger: true
-                  }
+                  }] : [])
                 ]}
               />
             )}
             emptyMessage="No se encontraron proveedores"
             emptyIcon="fa-truck-slash"
           />
+
+          {/* Controles de paginación (inferior) */}
+          {proveedoresFiltrados.length > 0 && (
+            <Paginacion
+              paginaActual={paginaActual}
+              totalElementos={proveedoresFiltrados.length}
+              elementosPorPagina={elementosPorPagina}
+              onChangePagina={setPaginaActual}
+            />
+          )}
         </main>
 
         <Footer />
       </div>
 
-      {/* Modal de Edición */}
+      {/* Modal de Edición con botones condicionales - MODIFICADO */}
       <Modal
         isOpen={modalAbierto && proveedorSeleccionado}
         onClose={cerrarModal}
@@ -389,18 +478,24 @@ export default function Proveedores() {
         large={true}
         footer={
           <>
-            <button className="btn btn-danger" onClick={() => eliminar(proveedorSeleccionado.id)}>
-              <i className="fa-solid fa-trash"></i>
-              Eliminar
-            </button>
+            {/* Solo ADMIN ve botón Eliminar - AGREGADO */}
+            {permisos.puedeEliminar && (
+              <button className="btn btn-danger" onClick={() => eliminar(proveedorSeleccionado.id)}>
+                <i className="fa-solid fa-trash"></i>
+                Eliminar
+              </button>
+            )}
             <button className="btn btn-secondary" onClick={cerrarModal}>
               <i className="fa-solid fa-times"></i>
               Cancelar
             </button>
-            <button className="btn btn-primary" onClick={guardarCambios}>
-              <i className="fa-solid fa-save"></i>
-              Guardar
-            </button>
+            {/* Solo VENDEDOR y PRICING ven botón Guardar - AGREGADO */}
+            {permisos.puedeEditar && (
+              <button className="btn btn-primary" onClick={guardarCambios}>
+                <i className="fa-solid fa-save"></i>
+                Guardar
+              </button>
+            )}
           </>
         }
       >
@@ -480,7 +575,7 @@ export default function Proveedores() {
         />
       </Modal>
 
-      {/* Modal de Nuevo Proveedor */}
+      {/* Modal de Nuevo Proveedor con botones condicionales - MODIFICADO */}
       <Modal
         isOpen={modalNuevo}
         onClose={cerrarModal}
@@ -492,10 +587,13 @@ export default function Proveedores() {
               <i className="fa-solid fa-times"></i>
               Cancelar
             </button>
-            <button className="btn btn-primary" onClick={crearProveedor}>
-              <i className="fa-solid fa-plus"></i>
-              Crear
-            </button>
+            {/* Solo VENDEDOR y PRICING ven botón Crear - AGREGADO */}
+            {permisos.puedeCrear && (
+              <button className="btn btn-primary" onClick={crearProveedor}>
+                <i className="fa-solid fa-plus"></i>
+                Crear
+              </button>
+            )}
           </>
         }
       >

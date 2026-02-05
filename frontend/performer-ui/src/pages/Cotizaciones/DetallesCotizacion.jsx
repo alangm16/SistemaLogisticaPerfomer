@@ -9,6 +9,7 @@ import Badge from '../../components/Badge';
 import FormField from '../../components/FormField';
 import HistorialModal from '../../components/HistorialModal';
 import useWorkflow from '../../hooks/useWorkflow';
+import GenerarPDFCotizacion from '../../components/GenerarPDFCotizacion';
 import Swal from 'sweetalert2';
 import '../../styles/dashboard.css';
 import '../../styles/cotizaciones.css';
@@ -294,7 +295,7 @@ export default function DetallesCotizacion() {
       type="secondary"
     />
   );
-
+    
   if (loading) {
     return (
       <div className="dashboard-layout">
@@ -465,7 +466,10 @@ export default function DetallesCotizacion() {
 
                 {/* Botón de Historial - Todos pueden ver */}
                 {permisos.puedeVerHistorial && <ActionButtonHistorial />}
-                
+
+                {/* Boton Generar PDF */ }
+                <GenerarPDFCotizacion cotizacion={cotizacion} />   
+
                 {/* Cambios de estado - Solo PRICING */}
                 {permisos.puedeCambiarEstado && cotizacion.estado === 'PENDIENTE' && (
                   <ActionButton 

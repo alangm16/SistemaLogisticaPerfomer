@@ -13,3 +13,6 @@ backend/.settings/
 
 # Docker
 mysql_data/
+
+#node_modules
+node_modules/

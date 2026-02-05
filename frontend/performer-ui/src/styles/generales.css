@@ -536,3 +536,48 @@
   .paginacion-numeros { justify-content: center; }
   .modal-footer .btn { min-height: 44px; }
 }
+
+.btn-generar-pdf {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background-color: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.btn-generar-pdf:hover:not(:disabled) {
+  background-color: #c82333;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  transform: translateY(-1px);
+}
+
+.btn-generar-pdf:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.btn-generar-pdf:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-generar-pdf i {
+  font-size: 16px;
+}
+
+/* Responsivo */
+@media (max-width: 768px) {
+  .btn-generar-pdf {
+    width: 100%;
+    justify-content: center;
+    padding: 12px 20px;
+  }
+}

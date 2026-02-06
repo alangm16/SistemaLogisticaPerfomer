@@ -13,6 +13,7 @@ import NuevaSolicitud from './pages/Solicitudes/NuevaSolicitud';
 import MisSolicitudes from './pages/Solicitudes/MisSolicitudes';
 import Unauthorized from './pages/Unauthorized';
 import Logout from './pages/Login/Logout';
+import useIdleTimeout from './hooks/useIDleTimeout.js';
 
 // PrivateRoute extendido con validación de rol
 function PrivateRoute({ children, roles }) {
@@ -30,9 +31,15 @@ function PrivateRoute({ children, roles }) {
   return children;
 }
 
+const IdleHandler = () => {
+  useIdleTimeout(15);
+  return null;
+};
+
 function App() {
   return (
     <Router>
+      <IdleHandler />
       <Routes>
         {/* Login */}
         <Route path="/login" element={<Login />} />

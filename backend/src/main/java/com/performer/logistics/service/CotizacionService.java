@@ -5,6 +5,8 @@ import com.performer.logistics.domain.Empleado;
 import com.performer.logistics.domain.Historial;
 import com.performer.logistics.domain.Proveedor;
 import com.performer.logistics.domain.Solicitud;
+import com.performer.logistics.dto.CalculadoraMargenDTO;
+import com.performer.logistics.dto.CotizacionComparativaDTO;
 import com.performer.logistics.dto.CotizacionSugerenciaDTO;
 import com.performer.logistics.exception.BadRequestException;
 import com.performer.logistics.exception.ResourceNotFoundException;
@@ -43,6 +45,11 @@ public class CotizacionService {
 
     public List<Cotizacion> listarTodas() {
         return cotizacionRepository.findAll();
+    }
+    
+    public Cotizacion buscarPorId(Long id) {
+        return cotizacionRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Cotización no encontrada con id: " + id));
     }
 
     public Cotizacion guardar(Cotizacion cotizacion) {
@@ -146,88 +153,80 @@ public class CotizacionService {
         return cotizacionRepository.findBySolicitudId(solicitudId);
     }
     
-    public List<Cotizacion> sugerenciasPorSolicitud(Long solicitudId) {
-    Solicitud s = solicitudRepository.findById(solicitudId)
-        .orElseThrow(() -> new ResourceNotFoundException("Solicitud no encontrada"));
-
-    // Obtener todas las cotizaciones, pero podríamos limitar a las más recientes (por ejemplo, últimos 6 meses)
-    // Por ahora, todas
-    List<Cotizacion> todas = cotizacionRepository.findAll();
-
-    return todas.stream()
-        .filter(c -> c.getTipoTransporte().name().equals(s.getTipoServicio().name()))
-        .filter(c -> {
-            // Origen
-            boolean origenOk = false;
-            if (s.getOrigenCiudad() != null && s.getOrigenPais() != null) {
-                origenOk = c.getOrigen().toLowerCase().contains(s.getOrigenCiudad().toLowerCase())
-                    && c.getOrigen().toLowerCase().contains(s.getOrigenPais().toLowerCase());
-            } else if (s.getOrigenCiudad() != null) {
-                origenOk = c.getOrigen().toLowerCase().contains(s.getOrigenCiudad().toLowerCase());
-            } else if (s.getOrigenPais() != null) {
-                origenOk = c.getOrigen().toLowerCase().contains(s.getOrigenPais().toLowerCase());
-            }
-            return origenOk;
-        })
-        .filter(c -> {
-            // Destino
-            boolean destinoOk = false;
-            if (s.getDestinoCiudad() != null && s.getDestinoPais() != null) {
-                destinoOk = c.getDestino().toLowerCase().contains(s.getDestinoCiudad().toLowerCase())
-                    && c.getDestino().toLowerCase().contains(s.getDestinoPais().toLowerCase());
-            } else if (s.getDestinoCiudad() != null) {
-                destinoOk = c.getDestino().toLowerCase().contains(s.getDestinoCiudad().toLowerCase());
-            } else if (s.getDestinoPais() != null) {
-                destinoOk = c.getDestino().toLowerCase().contains(s.getDestinoPais().toLowerCase());
-            }
-            return destinoOk;
-        })
-        .sorted(Comparator.comparing(Cotizacion::getCreadoEn).reversed())
-        .limit(10)
-        .collect(Collectors.toList());
-}
-    
-    public Cotizacion buscarPorId(Long id) {
-        return cotizacionRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Cotización no encontrada"));
-    }
-
     public void eliminar(Long id) {
-        Cotizacion c = buscarPorId(id);
-        cotizacionRepository.delete(c);
-
-        historialService.guardar(Historial.builder()
-                .entidadTipo(Historial.EntidadTipo.COTIZACION)
-                .entidadId(id)
-                .accion("ELIMINADO")
-                .detalle("Cotización eliminada")
-                .usuario(c.getSolicitud().getCreadoPor())
-                .timestamp(LocalDateTime.now())
-                .build());
+        Cotizacion cotizacion = buscarPorId(id);
+        cotizacionRepository.delete(cotizacion);
+        
+        // Registrar eliminación en historial
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String email = auth.getName();
+        Empleado usuario = empleadoRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("Empleado no encontrado"));
+                
+        historialService.registrar(
+            Historial.EntidadTipo.COTIZACION,
+            id,
+            "ELIMINADO",
+            "Cotización eliminada",
+            usuario.getId()
+        );
     }
     
-    // En CotizacionService.java - Modificar sugerenciasAvanzadas
+    public List<Cotizacion> sugerenciasPorSolicitud(Long solicitudId) {
+        Solicitud s = solicitudRepository.findById(solicitudId)
+            .orElseThrow(() -> new ResourceNotFoundException("Solicitud no encontrada"));
+
+        List<Cotizacion> todas = cotizacionRepository.findAll();
+
+        return todas.stream()
+            .filter(c -> c.getTipoTransporte().name().equals(s.getTipoServicio().name()))
+            .filter(c -> {
+                // Origen
+                boolean origenOk = false;
+                if (s.getOrigenCiudad() != null && s.getOrigenPais() != null) {
+                    origenOk = c.getOrigen().toLowerCase().contains(s.getOrigenCiudad().toLowerCase())
+                        && c.getOrigen().toLowerCase().contains(s.getOrigenPais().toLowerCase());
+                } else if (s.getOrigenCiudad() != null) {
+                    origenOk = c.getOrigen().toLowerCase().contains(s.getOrigenCiudad().toLowerCase());
+                } else if (s.getOrigenPais() != null) {
+                    origenOk = c.getOrigen().toLowerCase().contains(s.getOrigenPais().toLowerCase());
+                }
+                return origenOk;
+            })
+            .filter(c -> {
+                // Destino
+                boolean destinoOk = false;
+                if (s.getDestinoCiudad() != null && s.getDestinoPais() != null) {
+                    destinoOk = c.getDestino().toLowerCase().contains(s.getDestinoCiudad().toLowerCase())
+                        && c.getDestino().toLowerCase().contains(s.getDestinoPais().toLowerCase());
+                } else if (s.getDestinoCiudad() != null) {
+                    destinoOk = c.getDestino().toLowerCase().contains(s.getDestinoCiudad().toLowerCase());
+                } else if (s.getDestinoPais() != null) {
+                    destinoOk = c.getDestino().toLowerCase().contains(s.getDestinoPais().toLowerCase());
+                }
+                return destinoOk;
+            })
+            .limit(5)
+            .collect(Collectors.toList());
+    }
+    
+    // Método mejorado con puntuación y ranking
     public List<CotizacionSugerenciaDTO> sugerenciasAvanzadas(Long solicitudId) {
         Solicitud solicitudActual = solicitudRepository.findById(solicitudId)
             .orElseThrow(() -> new ResourceNotFoundException("Solicitud no encontrada"));
 
-        // Obtener cotizaciones recientes (últimos 6 meses) que tengan datos completos
-        LocalDate seisMesesAtras = LocalDate.now().minusMonths(6);
-        List<Cotizacion> cotizacionesRecientes = cotizacionRepository
-            .findByCreadoEnAfter(seisMesesAtras.atStartOfDay())
-            .stream()
-            // Filtrar cotizaciones que tengan los datos mínimos necesarios
-            .filter(c -> c.getTiempoEstimado() != null && !c.getTiempoEstimado().isEmpty())
-            .filter(c -> c.getValidoHasta() != null)
-            .filter(c -> c.getCosto() != null && c.getCosto() > 0)
-            .collect(Collectors.toList());
+        // Obtener cotizaciones de los últimos 6 meses para mayor relevancia
+        LocalDateTime fechaLimite = LocalDateTime.now().minusMonths(6);
+        List<Cotizacion> cotizacionesRecientes = cotizacionRepository.findByCreadoEnAfter(fechaLimite);
 
-        return cotizacionesRecientes.stream()
-            .map(c -> calcularPuntuacion(c, solicitudActual))
-            .filter(p -> p.puntuacion() >= 50.0) // Solo sugerencias relevantes
-            .sorted((a, b) -> Double.compare(b.puntuacion(), a.puntuacion()))
-            .limit(5)
-            .collect(Collectors.toList());
+        List<CotizacionSugerenciaDTO> sugerencias = cotizacionesRecientes.stream()
+        .map(c -> calcularPuntuacion(c, solicitudActual))
+        .filter(dto -> dto.puntuacion() >= 30.0)   // 👈 AQUÍ
+        .sorted(Comparator.comparing(CotizacionSugerenciaDTO::puntuacion).reversed()) // 👈 Y AQUÍ
+        .limit(10)
+        .collect(Collectors.toList());
+
+        return sugerencias;
     }
     
     private CotizacionSugerenciaDTO calcularPuntuacion(Cotizacion cotizacion, Solicitud solicitudActual) {
@@ -408,5 +407,356 @@ public class CotizacionService {
 
         return guardada;
     }
-
+    
+    /**
+     * NUEVOS MÉTODOS PARA MÁRGENES Y COMPARACIÓN
+     */
+    
+    /**
+     * Calcula métricas financieras para una cotización
+     */
+    public CalculadoraMargenDTO calcularMargen(
+            Double costoProveedor, 
+            Double costosAdicionales,
+            Double margenDeseadoPct,
+            Long solicitudId) {
+        
+        // Validar inputs
+        if (costoProveedor == null || costoProveedor <= 0) {
+            throw new BadRequestException("El costo del proveedor debe ser mayor a 0");
+        }
+        
+        costosAdicionales = costosAdicionales != null ? costosAdicionales : 0.0;
+        margenDeseadoPct = margenDeseadoPct != null ? margenDeseadoPct : 15.0; // 15% por defecto
+        
+        // Calcular costo total
+        Double costoTotal = costoProveedor + costosAdicionales;
+        
+        // Margen mínimo recomendado (10%)
+        Double margenMinimoPct = 10.0;
+        
+        // Calcular precios de venta
+        Double precioVentaSugerido = costoTotal / (1 - (margenDeseadoPct / 100));
+        Double precioVentaMinimo = costoTotal / (1 - (margenMinimoPct / 100));
+        
+        // Calcular utilidades
+        Double utilidadEstimada = precioVentaSugerido - costoTotal;
+        Double utilidadMinima = precioVentaMinimo - costoTotal;
+        
+        // ROI
+        Double roi = (utilidadEstimada / costoTotal) * 100;
+        
+        // Obtener precios de mercado para la solicitud
+        Map<String, Double> preciosMercado = obtenerPreciosMercado(solicitudId);
+        
+        // Determinar posición en el mercado
+        String posicionMercado = determinarPosicionMercado(
+            precioVentaSugerido, 
+            preciosMercado.get("promedio")
+        );
+        
+        // Generar recomendaciones
+        String recomendacion = generarRecomendacion(
+            margenDeseadoPct, 
+            precioVentaSugerido, 
+            preciosMercado
+        );
+        
+        // Generar alertas
+        String alertas = generarAlertas(margenDeseadoPct, posicionMercado);
+        
+        return CalculadoraMargenDTO.builder()
+            .costoProveedor(costoProveedor)
+            .costosAdicionales(costosAdicionales)
+            .costoTotal(costoTotal)
+            .margenDeseadoPct(margenDeseadoPct)
+            .margenMinimoPct(margenMinimoPct)
+            .precioVentaSugerido(Math.round(precioVentaSugerido * 100.0) / 100.0)
+            .precioVentaMinimo(Math.round(precioVentaMinimo * 100.0) / 100.0)
+            .utilidadEstimada(Math.round(utilidadEstimada * 100.0) / 100.0)
+            .utilidadMinima(Math.round(utilidadMinima * 100.0) / 100.0)
+            .precioMercadoPromedio(preciosMercado.get("promedio"))
+            .precioMercadoMinimo(preciosMercado.get("minimo"))
+            .precioMercadoMaximo(preciosMercado.get("maximo"))
+            .posicionMercado(posicionMercado)
+            .recomendacion(recomendacion)
+            .alertas(alertas)
+            .roi(Math.round(roi * 100.0) / 100.0)
+            .build();
+    }
+    
+    /**
+     * Aplica un margen de ganancia a una cotización existente
+     */
+    public Cotizacion aplicarMargen(Long cotizacionId, Double margenPct) {
+        Cotizacion cotizacion = buscarPorId(cotizacionId);
+        
+        if (margenPct == null || margenPct < 0 || margenPct > 100) {
+            throw new BadRequestException("El margen debe estar entre 0 y 100");
+        }
+        
+        // Guardar margen anterior para historial
+        Double margenAnterior = cotizacion.getMargenGananciaPct();
+        
+        // Aplicar nuevo margen
+        cotizacion.setMargenGananciaPct(margenPct);
+        
+        // Guardar
+        Cotizacion actualizada = cotizacionRepository.save(cotizacion);
+        
+        // Registrar en historial
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String email = auth.getName();
+        Empleado usuario = empleadoRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("Empleado no encontrado"));
+        
+        historialService.registrar(
+            Historial.EntidadTipo.COTIZACION,
+            cotizacionId,
+            "MARGEN_ACTUALIZADO",
+            String.format("{\"margen_anterior\":\"%s\",\"margen_nuevo\":\"%s\"}", 
+                margenAnterior, margenPct),
+            usuario.getId()
+        );
+        
+        return actualizada;
+    }
+    
+    /**
+     * Compara múltiples cotizaciones de una solicitud
+     */
+    public List<CotizacionComparativaDTO> compararCotizaciones(Long solicitudId) {
+        List<Cotizacion> cotizaciones = cotizacionRepository.findBySolicitudId(solicitudId);
+        
+        if (cotizaciones.isEmpty()) {
+            return new ArrayList<>();
+        }
+        
+        // Convertir a DTOs con métricas
+        List<CotizacionComparativaDTO> comparativas = cotizaciones.stream()
+            .map(this::convertirAComparativa)
+            .collect(Collectors.toList());
+        
+        // Asignar rankings
+        asignarRankings(comparativas);
+        
+        return comparativas;
+    }
+    
+    /**
+     * Métodos auxiliares privados
+     */
+    
+    private Map<String, Double> obtenerPreciosMercado(Long solicitudId) {
+        if (solicitudId == null) {
+            return Map.of(
+                "promedio", 0.0,
+                "minimo", 0.0,
+                "maximo", 0.0
+            );
+        }
+        
+        List<Cotizacion> cotizacionesSolicitud = cotizacionRepository.findBySolicitudId(solicitudId);
+        
+        if (cotizacionesSolicitud.isEmpty()) {
+            return Map.of(
+                "promedio", 0.0,
+                "minimo", 0.0,
+                "maximo", 0.0
+            );
+        }
+        
+        List<Double> costos = cotizacionesSolicitud.stream()
+            .map(Cotizacion::getCosto)
+            .filter(c -> c != null && c > 0)
+            .collect(Collectors.toList());
+        
+        if (costos.isEmpty()) {
+            return Map.of(
+                "promedio", 0.0,
+                "minimo", 0.0,
+                "maximo", 0.0
+            );
+        }
+        
+        Double promedio = costos.stream()
+            .mapToDouble(Double::doubleValue)
+            .average()
+            .orElse(0.0);
+        
+        Double minimo = costos.stream()
+            .mapToDouble(Double::doubleValue)
+            .min()
+            .orElse(0.0);
+        
+        Double maximo = costos.stream()
+            .mapToDouble(Double::doubleValue)
+            .max()
+            .orElse(0.0);
+        
+        return Map.of(
+            "promedio", Math.round(promedio * 100.0) / 100.0,
+            "minimo", Math.round(minimo * 100.0) / 100.0,
+            "maximo", Math.round(maximo * 100.0) / 100.0
+        );
+    }
+    
+    private String determinarPosicionMercado(Double precioSugerido, Double precioPromedio) {
+        if (precioPromedio == null || precioPromedio == 0) {
+            return "SIN DATOS";
+        }
+        
+        double diferenciaPct = ((precioSugerido - precioPromedio) / precioPromedio) * 100;
+        
+        if (diferenciaPct < -10) {
+            return "POR DEBAJO";
+        } else if (diferenciaPct > 10) {
+            return "POR ENCIMA";
+        } else {
+            return "EN RANGO";
+        }
+    }
+    
+    private String generarRecomendacion(
+            Double margen, 
+            Double precioSugerido, 
+            Map<String, Double> preciosMercado) {
+        
+        StringBuilder recomendacion = new StringBuilder();
+        
+        // Análisis de margen
+        if (margen < 10) {
+            recomendacion.append("⚠ Margen bajo. Considera incrementar al menos a 10%. ");
+        } else if (margen >= 10 && margen <= 20) {
+            recomendacion.append("✓ Margen aceptable. ");
+        } else if (margen > 20 && margen <= 30) {
+            recomendacion.append("✓ Margen bueno. ");
+        } else {
+            recomendacion.append("⚠ Margen muy alto. Verifica competitividad. ");
+        }
+        
+        // Análisis de posición en mercado
+        if (preciosMercado.get("promedio") > 0) {
+            double diferencia = precioSugerido - preciosMercado.get("promedio");
+            
+            if (diferencia < 0) {
+                recomendacion.append("Precio por debajo del promedio - muy competitivo. ");
+            } else if (diferencia > preciosMercado.get("promedio") * 0.15) {
+                recomendacion.append("Precio significativamente sobre el promedio - revisar estrategia. ");
+            }
+        }
+        
+        return recomendacion.toString();
+    }
+    
+    private String generarAlertas(Double margen, String posicionMercado) {
+        List<String> alertas = new ArrayList<>();
+        
+        if (margen < 10) {
+            alertas.add("Margen por debajo del mínimo recomendado (10%)");
+        }
+        
+        if (margen > 30) {
+            alertas.add("Margen muy alto - puede afectar competitividad");
+        }
+        
+        if ("POR ENCIMA".equals(posicionMercado)) {
+            alertas.add("Precio por encima del mercado");
+        }
+        
+        return alertas.isEmpty() ? null : String.join(". ", alertas);
+    }
+    
+    private CotizacionComparativaDTO convertirAComparativa(Cotizacion c) {
+        // Calcular precio de venta basado en margen
+        Double precioVenta = null;
+        if (c.getMargenGananciaPct() != null && c.getMargenGananciaPct() > 0) {
+            precioVenta = c.getCosto() / (1 - (c.getMargenGananciaPct() / 100));
+        }
+        
+        // Calcular utilidad estimada
+        Double utilidad = precioVenta != null ? precioVenta - c.getCosto() : null;
+        
+        // Calcular ROI
+        Double roi = utilidad != null && c.getCosto() > 0 ? 
+            (utilidad / c.getCosto()) * 100 : null;
+        
+        // Calcular días de vigencia restantes
+        Integer diasVigencia = null;
+        String estadoVigencia = "SIN FECHA";
+        
+        if (c.getValidoHasta() != null) {
+            diasVigencia = (int) ChronoUnit.DAYS.between(LocalDate.now(), c.getValidoHasta());
+            
+            if (diasVigencia < 0) {
+                estadoVigencia = "VENCIDO";
+            } else if (diasVigencia <= 7) {
+                estadoVigencia = "PRÓXIMO A VENCER";
+            } else {
+                estadoVigencia = "VIGENTE";
+            }
+        }
+        
+        return CotizacionComparativaDTO.builder()
+            .id(c.getId())
+            .folioCodigo(c.getSolicitud() != null ? c.getSolicitud().getFolioCodigo() : null)
+            .proveedorNombre(c.getProveedor() != null ? c.getProveedor().getNombre() : null)
+            .proveedorPais(c.getProveedor() != null ? c.getProveedor().getPais() : null)
+            .tipoTransporte(c.getTipoTransporte() != null ? c.getTipoTransporte().name() : null)
+            .origen(c.getOrigen())
+            .destino(c.getDestino())
+            .tipoUnidad(c.getTipoUnidad())
+            .tiempoEstimado(c.getTiempoEstimado())
+            .costoProveedor(c.getCosto())
+            .margenGananciaPct(c.getMargenGananciaPct())
+            .precioVenta(precioVenta != null ? Math.round(precioVenta * 100.0) / 100.0 : null)
+            .utilidadEstimada(utilidad != null ? Math.round(utilidad * 100.0) / 100.0 : null)
+            .diasCredito(c.getDiasCredito())
+            .validoHasta(c.getValidoHasta())
+            .roi(roi != null ? Math.round(roi * 100.0) / 100.0 : null)
+            .diasVigenciaRestantes(diasVigencia)
+            .estadoVigencia(estadoVigencia)
+            .estado(c.getEstado() != null ? c.getEstado().name() : null)
+            .build();
+    }
+    
+    private void asignarRankings(List<CotizacionComparativaDTO> comparativas) {
+        // Ranking por costo (menor = mejor)
+        List<CotizacionComparativaDTO> ordenadosPorCosto = comparativas.stream()
+            .filter(c -> c.getCostoProveedor() != null)
+            .sorted(Comparator.comparing(CotizacionComparativaDTO::getCostoProveedor))
+            .collect(Collectors.toList());
+        
+        for (int i = 0; i < ordenadosPorCosto.size(); i++) {
+            ordenadosPorCosto.get(i).setRankingPorCosto(i + 1);
+        }
+        
+        // Ranking por margen (mayor = mejor)
+        List<CotizacionComparativaDTO> ordenadosPorMargen = comparativas.stream()
+            .filter(c -> c.getMargenGananciaPct() != null)
+            .sorted(Comparator.comparing(CotizacionComparativaDTO::getMargenGananciaPct).reversed())
+            .collect(Collectors.toList());
+        
+        for (int i = 0; i < ordenadosPorMargen.size(); i++) {
+            ordenadosPorMargen.get(i).setRankingPorMargen(i + 1);
+        }
+        
+        // Asignar nivel de competitividad
+        for (CotizacionComparativaDTO c : comparativas) {
+            Integer rankCosto = c.getRankingPorCosto();
+            Integer rankMargen = c.getRankingPorMargen();
+            
+            if (rankCosto != null && rankMargen != null) {
+                double promedio = (rankCosto + rankMargen) / 2.0;
+                
+                if (promedio <= 2) {
+                    c.setNivelCompetitividad("MUY COMPETITIVO");
+                } else if (promedio <= 4) {
+                    c.setNivelCompetitividad("COMPETITIVO");
+                } else {
+                    c.setNivelCompetitividad("POCO COMPETITIVO");
+                }
+            }
+        }
+    }
 }

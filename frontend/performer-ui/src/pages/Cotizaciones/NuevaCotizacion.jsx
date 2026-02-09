@@ -7,6 +7,8 @@ import Header from '../../components/Header';
 import Footer from '../../components/Footer';
 import FormField from '../../components/FormField';
 import SugerenciasCotizacion from '../../components/SugerenciasCotizacion';
+import CalculadoraMargen from '../../components/CalculadoraMargen';
+import Modal from '../../components/Modal';
 import Swal from 'sweetalert2';
 import '../../styles/dashboard.css';
 import '../../styles/cotizaciones.css';
@@ -18,7 +20,8 @@ export default function NuevaCotizacion() {
   const [proveedores, setProveedores] = useState([]);
   const [loading, setLoading] = useState(true);
   const [tipoTransporteActivo, setTipoTransporteActivo] = useState('TERRESTRE');
-  
+/*   const [mostrarCalculadora, setMostrarCalculadora] = useState(false);
+ */  const [modalCalculadora, setModalCalculadora] = useState(false);
   const [formData, setFormData] = useState({
     solicitudId: '',
     proveedorId: '',
@@ -110,7 +113,7 @@ export default function NuevaCotizacion() {
       tipoUnidad: sugerencia.tipoUnidad || '',
       tiempoEstimado: sugerencia.tiempoEstimado || '',
       costo: sugerencia.costo,
-      // validoHasta se mantiene como estaba (no está en el DTO)
+      margenGananciaPct: sugerencia.margenGananciaPct || '',
     }));
 
     // Cambiar la pestaña activa al tipo de transporte de la sugerencia
@@ -124,6 +127,14 @@ export default function NuevaCotizacion() {
       timer: 2000,
       showConfirmButton: false,
     });
+  };
+
+  const handleAplicarCalculadora = (resultado) => {
+    setFormData(prev => ({
+      ...prev,
+      costo: resultado.costo,
+      margenGananciaPct: resultado.margen
+    }));
   };
 
   const crearCotizacion = async () => {
@@ -256,6 +267,26 @@ export default function NuevaCotizacion() {
               type="secondary"
             />
             <h2 className="page-title-subheader">Nueva Cotización</h2>
+          </div>
+          
+          <div className="subheader-right">
+            <ActionButton
+              onClick={() => setModalCalculadora(true)}
+              icon="fa-calculator"
+              label="Calcular Márgenes" 
+              type="primary"
+            />
+
+            {/* Añadir botón para abrir comparador */}
+            {formData.solicitudId && (
+              <ActionButton
+                onClick={() => navigate(`/cotizaciones/comparar?solicitudId=${formData.solicitudId}`)}
+                icon="fa-chart-bar"
+                label="Comparar Cotizaciones"
+                type="secondary"
+                style={{ marginLeft: '10px' }}
+              />
+            )}
           </div>
         </div>
 
@@ -425,6 +456,21 @@ export default function NuevaCotizacion() {
         </main>
         <Footer />
       </div>
+      {/* Modal de la Calculadora de Márgenes */}
+      <Modal
+        isOpen={modalCalculadora}
+        onClose={() => setModalCalculadora(false)}
+        title="Calculadora de Márgenes"
+        large={true}
+      >
+        <CalculadoraMargen
+          solicitudId={formData.solicitudId ? parseInt(formData.solicitudId) : null}
+          onAplicar={(resultado) => {
+            handleAplicarCalculadora(resultado);
+            setModalCalculadora(false); // Cerrar modal después de aplicar
+          }}
+        />
+      </Modal>
     </div>
   );
 }

@@ -172,6 +172,22 @@ export default function Cotizaciones() {
     }
   };
 
+  // Función para comparar cotizaciones de una solicitud
+  const compararCotizaciones = (cotizacion) => {
+    if (!cotizacion.solicitud?.id) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Solicitud no encontrada',
+        text: 'Esta cotización no tiene una solicitud asociada para comparar.',
+        confirmButtonText: 'Entendido'
+      });
+      return;
+    }
+
+    // Navegar a la página de comparación
+    navigate(`/cotizaciones/comparar?solicitudId=${cotizacion.solicitud.id}`);
+  };
+
   // Usar useMemo para filtrado eficiente
   const cotizacionesFiltradas = useMemo(() => {
     return cotizaciones.filter(c => {
@@ -328,6 +344,15 @@ export default function Cotizaciones() {
       });
     }
 
+    // Comparar Cotizaciones - Para cotizaciones con solicitud
+    if (cotizacion.solicitud?.id) {
+      items.push({
+        label: 'Comparar Cotizaciones',
+        icon: 'fa-chart-bar',
+        onClick: () => compararCotizaciones(cotizacion)
+      });
+    }
+
     // Cambios de estado - Solo PRICING
     if (permisos.puedeCambiarEstado) {
       if (cotizacion.estado === 'PENDIENTE') {
@@ -410,6 +435,33 @@ export default function Cotizaciones() {
           ]}
           // Solo mostrar botón de agregar si el usuario tiene permisos (PRICING)
           onAgregarClick={permisos.puedeCrear ? () => navigate('/cotizaciones/nueva') : undefined}
+          // Añadir botón de información sobre comparación
+          accionesAdicionales={
+            <button
+              className="btn btn-info"
+              onClick={() => {
+                Swal.fire({
+                  icon: 'info',
+                  title: 'Comparar Cotizaciones',
+                  html: `
+                    <div style="text-align: left;">
+                      <p><strong>Para comparar cotizaciones:</strong></p>
+                      <ol>
+                        <li>Selecciona una cotización de la lista</li>
+                        <li>Haz clic en "Opciones" en la columna de acciones</li>
+                        <li>Selecciona "Comparar Cotizaciones de esta Solicitud"</li>
+                      </ol>
+                      <p><em>Esto mostrará todas las cotizaciones asociadas a la misma solicitud para que puedas comparar costos, proveedores y márgenes.</em></p>
+                    </div>
+                  `,
+                  confirmButtonText: 'Entendido'
+                });
+              }}
+            >
+              <i className="fa-solid fa-info-circle"></i>
+              Cómo Comparar
+            </button>
+          }
         />
 
         <main className="main-panel">

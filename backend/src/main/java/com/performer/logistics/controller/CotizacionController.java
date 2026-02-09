@@ -3,6 +3,8 @@ package com.performer.logistics.controller;
 import com.performer.logistics.domain.Cotizacion;
 import com.performer.logistics.domain.Empleado;
 import com.performer.logistics.domain.Historial;
+import com.performer.logistics.dto.CalculadoraMargenDTO;
+import com.performer.logistics.dto.CotizacionComparativaDTO;
 import com.performer.logistics.dto.CotizacionSugerenciaDTO;
 import com.performer.logistics.service.CotizacionService;
 import com.performer.logistics.service.EmpleadoService;
@@ -111,5 +113,54 @@ public class CotizacionController {
     @PreAuthorize("hasAnyRole('VENDEDOR', 'PRICING', 'ADMIN')")
     public List<Historial> obtenerHistorial(@PathVariable Long id) {
         return cotizacionService.obtenerHistorialCotizacion(id);
+    }
+    
+    /**
+     * NUEVOS ENDPOINTS PARA MÁRGENES Y COMPARACIÓN
+     */
+    
+    /**
+     * Calcula el margen de ganancia automáticamente
+     * POST /api/cotizaciones/calcular-margen
+     */
+    @PostMapping("/calcular-margen")
+    @PreAuthorize("hasAnyRole('PRICING', 'ADMIN')")
+    public CalculadoraMargenDTO calcularMargen(
+            @RequestParam Double costoProveedor,
+            @RequestParam(required = false) Double costosAdicionales,
+            @RequestParam(required = false) Double margenDeseadoPct,
+            @RequestParam(required = false) Long solicitudId) {
+        
+        return cotizacionService.calcularMargen(
+            costoProveedor, 
+            costosAdicionales, 
+            margenDeseadoPct,
+            solicitudId
+        );
+    }
+    
+    /**
+     * Aplica un margen de ganancia a una cotización existente
+     * PUT /api/cotizaciones/{id}/aplicar-margen
+     */
+    @PutMapping("/{id}/aplicar-margen")
+    @PreAuthorize("hasAnyRole('PRICING', 'ADMIN')")
+    public Cotizacion aplicarMargen(
+            @PathVariable Long id,
+            @RequestParam Double margenPct) {
+        
+        return cotizacionService.aplicarMargen(id, margenPct);
+    }
+    
+    /**
+     * Compara cotizaciones de una solicitud con métricas financieras
+     * GET /api/cotizaciones/comparar?solicitudId={id}
+     */
+    @GetMapping("/comparar")
+    @PreAuthorize("hasAnyRole('VENDEDOR', 'PRICING', 'ADMIN')")
+    public List<CotizacionComparativaDTO> compararCotizaciones(
+            @RequestParam Long solicitudId) {
+        
+        return cotizacionService.compararCotizaciones(solicitudId);
     }
 }

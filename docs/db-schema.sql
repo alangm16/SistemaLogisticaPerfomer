@@ -128,3 +128,28 @@ CREATE INDEX idx_solicitud_cliente ON solicitud (cliente_id);
 CREATE INDEX idx_solicitud_asignado ON solicitud (asignado_a);
 CREATE INDEX idx_cotizacion_proveedor ON cotizacion (proveedor_id);
 CREATE INDEX idx_cotizacion_solicitud ON cotizacion (solicitud_id);
+
+-- COTIZACION
+CREATE INDEX idx_cotizacion_solicitud_id ON cotizacion (solicitud_id);
+CREATE INDEX idx_cotizacion_proveedor_id ON cotizacion (proveedor_id);
+CREATE INDEX idx_cotizacion_estado ON cotizacion (estado);
+CREATE INDEX idx_cotizacion_tipo_creado ON cotizacion (tipo_transporte, creado_en);
+CREATE INDEX idx_cotizacion_tipo_costo ON cotizacion (tipo_transporte, costo);
+
+-- SOLICITUD
+CREATE INDEX idx_solicitud_estado ON solicitud (estado);
+CREATE INDEX idx_solicitud_empresa ON solicitud (empresa_codigo);
+CREATE INDEX idx_solicitud_asignado ON solicitud (asignado_a);
+CREATE INDEX idx_solicitud_creado_por ON solicitud (creado_por);
+CREATE INDEX idx_solicitud_cliente ON solicitud (cliente_id);
+CREATE INDEX idx_solicitud_empresa_creado ON solicitud (empresa_codigo, creado_en);
+
+-- HISTORIAL
+CREATE INDEX idx_historial_entidad ON historial (entidad_tipo, entidad_id);
+
+-- CLIENTE
+CREATE INDEX idx_cliente_email ON cliente (email);
+CREATE INDEX idx_cliente_rfc ON cliente (rfc);
+
+-- PROVEEDOR
+CREATE INDEX idx_proveedor_email ON proveedor (email);

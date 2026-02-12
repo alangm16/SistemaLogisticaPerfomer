@@ -46,12 +46,12 @@ export default function MainContent({ rol, nombre }) {
         icon: 'fa-file-alt',
         description: 'Ver y gestionar solicitudes'
       },
-      { 
+      /* { 
         label: 'Mis Solicitudes', 
         path: '/solicitudes/mis-solicitudes', 
         icon: 'fa-folder-open',
         description: 'Solicitudes que estoy gestionando'
-      },
+      }, */
       { 
         label: 'Solicitudes Asignadas', 
         path: '/solicitudes/asignadas', 
@@ -90,12 +90,12 @@ export default function MainContent({ rol, nombre }) {
         icon: 'fa-folder-open',
         description: 'Solicitudes que he creado'
       },
-      { 
+      /* { 
         label: 'Solicitudes Asignadas', 
         path: '/solicitudes/asignadas', 
         icon: 'fa-tasks',
         description: 'Solicitudes asignadas a mí'
-      },
+      }, */
       { 
         label: 'Clientes', 
         path: '/clientes', 

@@ -95,11 +95,11 @@ function App() {
         <Route path="/solicitudes/nueva" element={<PrivateRoute roles={['VENDEDOR']}>
           <NuevaSolicitud />
         </PrivateRoute>} />
-        <Route path="/solicitudes/mis-solicitudes" element={<PrivateRoute roles={['VENDEDOR','PRICING']}>
+        <Route path="/solicitudes/mis-solicitudes" element={<PrivateRoute roles={['VENDEDOR']}>
           <MisSolicitudes />
         </PrivateRoute>} />
         <Route path="/solicitudes/asignadas" element={
-          <PrivateRoute roles={['PRICING', 'ADMIN','VENDEDOR']}>
+          <PrivateRoute roles={['PRICING', 'ADMIN']}>
             <SolicitudesAsignadas />
           </PrivateRoute>
         } />

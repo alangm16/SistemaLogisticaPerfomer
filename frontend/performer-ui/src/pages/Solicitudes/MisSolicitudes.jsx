@@ -41,7 +41,7 @@ export default function MisSolicitudes() {
   
   // Permisos según rol - AGREGADO
   const permisos = {
-    puedeCambiarEstado: rol === 'VENDEDOR' || rol === 'PRICING', // Solo VENDEDOR y PRICING pueden cambiar estado
+    puedeCambiarEstado: rol === 'PRICING', // Solo VENDEDOR y PRICING pueden cambiar estado
     puedeCrear: rol === 'VENDEDOR', // Solo VENDEDOR puede crear nuevas solicitudes
     puedeVerHistorial: true, // Todos pueden ver historial
     puedeVerDetalles: true, // Todos pueden ver detalles

@@ -39,9 +39,9 @@ export default function MisSolicitudes() {
   const rol = localStorage.getItem('rol');
   const nombre = localStorage.getItem('nombre');
   
-  // Permisos según rol - AGREGADO
+  // Permisos según rol
   const permisos = {
-    puedeCambiarEstado: rol === 'PRICING', // Solo VENDEDOR y PRICING pueden cambiar estado
+    puedeCambiarEstado: rol === 'PRICING', // Solo PRICING pueden cambiar estado
     puedeCrear: rol === 'VENDEDOR', // Solo VENDEDOR puede crear nuevas solicitudes
     puedeVerHistorial: true, // Todos pueden ver historial
     puedeVerDetalles: true, // Todos pueden ver detalles
